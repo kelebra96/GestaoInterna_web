@@ -1,0 +1,320 @@
+services:
+  # ==========================================
+  # Next.js Application
+  # ==========================================
+  app:
+    image: myinventory:latest
+    container_name: myinventory-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # MongoDB (para Prisma)
+      DATABASE_URL: mongodb://mongodb:27017/myinventory
+
+      # Firebase (server-side)
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL}
+      FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY}
+      FIREBASE_STORAGE_BUCKET: ${FIREBASE_STORAGE_BUCKET}
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET}
+
+      # Node
+      PORT: 8080
+      NODE_ENV: production
+    volumes:
+      # Montar service account key (se usar arquivo ao invés de env vars)
+      - ./serviceAccountKey.json:/app/serviceAccountKey.json:ro
+    depends_on:
+      - mongodb
+    networks:
+      - myinventory-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ==========================================
+  # MongoDB (para Prisma/Planogramas/Analytics)
+  # ==========================================
+  mongodb:
+    image: mongo:7
+    container_name: myinventory-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: myinventory
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - myinventory-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # Nginx (Reverse Proxy + Load Balancer)
+  # ==========================================
+  nginx:
+    image: nginx:alpine
+    container_name: myinventory-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro  # Certificados SSL
+    depends_on:
+      - app
+    networks:
+      - myinventory-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================
+  # Redis (Cache - Opcional mas Recomendado)
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    container_name: myinventory-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    volumes:
+      - redis_data:/data
+    networks:
+      - myinventory-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # Supabase Self-Hosted
+  # ==========================================
+
+  # PostgreSQL - Banco de dados principal
+  postgres:
+    image: supabase/postgres:15.1.0.147
+    container_name: myinventory-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-your-super-secret-password}
+      POSTGRES_HOST: /var/run/postgresql
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - myinventory-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Studio - Interface administrativa do Supabase
+  studio:
+    image: supabase/studio:20240101-5e69d4f
+    container_name: myinventory-studio
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      SUPABASE_URL: http://kong:8000
+      STUDIO_PG_META_URL: http://meta:8080
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
+    networks:
+      - myinventory-network
+    depends_on:
+      - kong
+      - meta
+
+  # Kong - API Gateway
+  kong:
+    image: kong:2.8.1
+    container_name: myinventory-kong
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+      - "8443:8443"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+    volumes:
+      - ./supabase/kong.yml:/var/lib/kong/kong.yml:ro
+    networks:
+      - myinventory-network
+
+  # GoTrue - Serviço de autenticação
+  auth:
+    image: supabase/gotrue:v2.99.0
+    container_name: myinventory-auth
+    restart: unless-stopped
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL:-http://localhost:8000}
+
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-your-super-secret-password}@postgres:5432/postgres?search_path=auth
+
+      GOTRUE_SITE_URL: ${SITE_URL:-http://localhost:8080}
+      GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS}
+      GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
+
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: ${JWT_EXPIRY:-3600}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: ${ENABLE_EMAIL_SIGNUP:-true}
+      GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM:-true}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
+      GOTRUE_SMTP_HOST: ${SMTP_HOST}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT}
+      GOTRUE_SMTP_USER: ${SMTP_USER}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME}
+      GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - myinventory-network
+
+  # PostgREST - API REST automática
+  rest:
+    image: postgrest/postgrest:v11.2.2
+    container_name: myinventory-rest
+    restart: unless-stopped
+    environment:
+      PGRST_DB_URI: postgres://postgres:${POSTGRES_PASSWORD:-your-super-secret-password}@postgres:5432/postgres
+      PGRST_DB_SCHEMAS: public,storage
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - myinventory-network
+
+  # Realtime - WebSocket server
+  realtime:
+    image: supabase/realtime:v2.25.35
+    container_name: myinventory-realtime
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-your-super-secret-password}
+      DB_NAME: postgres
+      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
+      DB_ENC_KEY: supabaserealtime
+      FLY_ALLOC_ID: fly123
+      FLY_APP_NAME: realtime
+      SECRET_KEY_BASE: ${JWT_SECRET}
+      ERL_AFLAGS: -proto_dist inet_tcp
+      ENABLE_TAILSCALE: "false"
+      DNS_NODES: "''"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - myinventory-network
+    command: >
+      bash -c "/app/bin/migrate && /app/bin/realtime eval 'Realtime.Release.seeds(Realtime.Repo)' && /app/bin/server"
+
+  # Storage - Armazenamento de arquivos
+  storage:
+    image: supabase/storage-api:v0.43.11
+    container_name: myinventory-storage
+    restart: unless-stopped
+    environment:
+      ANON_KEY: ${SUPABASE_ANON_KEY}
+      SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
+      POSTGREST_URL: http://rest:3000
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-your-super-secret-password}@postgres:5432/postgres
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: stub
+      REGION: stub
+      GLOBAL_S3_BUCKET: stub
+    volumes:
+      - storage_data:/var/lib/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rest:
+        condition: service_started
+    networks:
+      - myinventory-network
+
+  # Meta - API de metadados do PostgreSQL
+  meta:
+    image: supabase/postgres-meta:v0.68.0
+    container_name: myinventory-meta
+    restart: unless-stopped
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: postgres
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: postgres
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD:-your-super-secret-password}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - myinventory-network
+
+# ==========================================
+# Volumes (Persistência de Dados)
+# ==========================================
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+  redis_data:
+    driver: local
+  postgres_data:
+    driver: local
+  storage_data:
+    driver: local
+
+# ==========================================
+# Networks
+# ==========================================
+networks:
+  myinventory-network:
+    driver: bridge
