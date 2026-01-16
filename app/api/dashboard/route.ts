@@ -16,10 +16,11 @@ export async function GET() {
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    // Buscar todas as solicitações
+    // Buscar todas as solicitações (excluindo rascunhos)
     const { data: solicitacoesDataResponse, error: solicitacoesError } = await supabaseAdmin
       .from('solicitacoes')
-      .select('*');
+      .select('*')
+      .neq('status', 'draft');
 
     let solicitacoesData: any[] = [];
     if (solicitacoesError) {

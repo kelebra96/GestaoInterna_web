@@ -44,3 +44,10 @@ next-env.d.ts
 /public/uploads
 
 /lib/generated/prisma
+# Windows reserved device names
+nul
+con
+prn
+aux
+lpt*
+com*

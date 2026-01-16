@@ -118,7 +118,14 @@ export async function GET(request: Request) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
-    let query = supabaseAdmin.from('checklist_executions').select('*');
+    let query = supabaseAdmin
+      .from('checklist_executions')
+      .select(`
+        *,
+        stores:store_id (
+          name
+        )
+      `);
 
     // Filtros
     if (companyId) {
@@ -158,7 +165,7 @@ export async function GET(request: Request) {
       templateType: data.template_type,
       companyId: data.company_id,
       storeId: data.store_id,
-      storeName: data.store_name,
+      storeName: data.store_name || data.stores?.name || '',
       sector: data.sector,
       userId: data.user_id,
       userName: data.user_name,

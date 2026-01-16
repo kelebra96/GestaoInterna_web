@@ -12,6 +12,7 @@ const userSchema = z.object({
   role: z.enum(['developer', 'admin', 'manager', 'agent', 'buyer']),
   companyId: z.string().optional(),
   storeId: z.string().optional(),
+  storeIds: z.array(z.string()).optional(),
 });
 
 type DbUser = {
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: validation.error.issues[0].message }, { status: 400 });
     }
 
-    const { displayName, email, password, role, companyId, storeId } = validation.data;
+    const { displayName, email, password, role, companyId, storeId, storeIds: inputStoreIds } = validation.data;
 
     const isSuperAdmin = requester.role === 'super_admin';
     const resolvedCompanyId = isSuperAdmin ? (companyId || null) : requester.orgId;
@@ -67,8 +68,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Empresa obrigat¢ria para criar usu rio' }, { status: 400 });
     }
 
-    if ((role === 'manager' || role === 'agent') && !storeId) {
-      return NextResponse.json({ error: 'storeId ‚ obrigat¢rio para perfis Manager/Agent' }, { status: 400 });
+    const hasStores = storeId || (inputStoreIds && inputStoreIds.length > 0);
+    if ((role === 'manager' || role === 'agent') && !hasStores) {
+      return NextResponse.json({ error: 'Loja é obrigatória para perfis Manager/Agent' }, { status: 400 });
     }
     if (!isSuperAdmin && (role === 'developer' || role === 'admin')) {
       return NextResponse.json({ error: 'Somente super admin pode criar usu rios admin/developer' }, { status: 403 });
@@ -84,6 +86,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Este e-mail já está cadastrado no sistema.' }, { status: 409 });
     }
 
+    // Verificar se existe usuário órfão no Auth (deletado da tabela users mas não do auth)
+    const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers();
+    const orphanAuthUser = authUsers?.users?.find(u => u.email === email);
+
+    if (orphanAuthUser) {
+      // Usuário existe no Auth mas não na tabela users - deletar do Auth primeiro
+      console.log(`[API /usuarios] Removendo usuário órfão do Auth: ${email}`);
+      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(orphanAuthUser.id);
+      if (deleteError) {
+        console.error('Erro ao remover usuário órfão:', deleteError);
+        return NextResponse.json({
+          error: 'Este e-mail possui um registro antigo. Tente novamente ou contate o suporte.'
+        }, { status: 409 });
+      }
+    }
+
     const { data: createdAuth, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -96,7 +114,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: createAuthError?.message || 'Falha ao criar usu rio' }, { status: 500 });
     }
 
-    const storeIds = storeId ? [storeId] : [];
+    // Prioriza storeIds se fornecido, senão usa storeId
+    const finalStoreIds = inputStoreIds && inputStoreIds.length > 0
+      ? inputStoreIds
+      : (storeId ? [storeId] : []);
+    const primaryStoreId = finalStoreIds.length > 0 ? finalStoreIds[0] : null;
 
     const { data: createdProfile, error: profileError } = await supabaseAdmin
       .from('users')
@@ -106,8 +128,8 @@ export async function POST(req: NextRequest) {
         display_name: displayName,
         role,
         company_id: resolvedCompanyId,
-        store_id: storeId || null,
-        store_ids: storeIds,
+        store_id: primaryStoreId,
+        store_ids: finalStoreIds,
         active: true,
       })
       .select()

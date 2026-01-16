@@ -102,8 +102,8 @@ export async function POST(
         address_code: addressCode,
         status: 'pending',
         created_at: new Date().toISOString(),
-        created_by: auth.userId,
         company_id: auth.orgId,
+        store_id: inventoryData.store_id,
       }));
 
       const { error: insertError } = await supabaseAdmin

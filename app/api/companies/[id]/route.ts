@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getAuthFromRequest } from '@/lib/helpers/auth';
 
@@ -24,17 +24,18 @@ function mapCompany(row: DbCompany) {
   };
 }
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  const auth = await getAuthFromRequest(req);
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await getAuthFromRequest(_request);
   if (!auth) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  if (auth.role !== 'super_admin' && auth.orgId !== id) {
+  const { id: companyId } = await params;
+  if (!companyId) {
+    return NextResponse.json({ error: 'Company id is required' }, { status: 400 });
+  }
+
+  if (auth.role !== 'super_admin' && auth.orgId !== companyId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -42,63 +43,16 @@ export async function GET(
     const { data, error } = await supabaseAdmin
       .from('companies')
       .select('*')
-      .eq('id', id)
+      .eq('id', companyId)
       .single();
 
     if (error || !data) {
-      return NextResponse.json({ error: 'Empresa nÆo encontrada' }, { status: 404 });
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
 
     return NextResponse.json({ company: mapCompany(data as DbCompany) });
   } catch (error) {
     console.error('Erro ao buscar empresa:', error);
-    return NextResponse.json({ error: 'Falha ao buscar empresa' }, { status: 500 });
-  }
-}
-
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  const auth = await getAuthFromRequest(req);
-  if (!auth) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
-  if (auth.role !== 'super_admin' && auth.orgId !== id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
-  const body = await req.json().catch(() => ({}));
-  const update: Record<string, any> = {};
-
-  if (typeof body.active === 'boolean') update.active = body.active;
-  if (typeof body.name === 'string') update.name = body.name;
-  if (typeof body.cnpj === 'string') update.cnpj = body.cnpj;
-  if (typeof body.tradingName === 'string') update.trading_name = body.tradingName;
-
-  if (Object.keys(update).length === 0) {
-    return NextResponse.json({ error: 'Nenhum campo v lido para atualizar' }, { status: 400 });
-  }
-
-  update.updated_at = new Date().toISOString();
-
-  try {
-    const { data, error } = await supabaseAdmin
-      .from('companies')
-      .update(update)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error || !data) {
-      throw error || new Error('Falha ao atualizar empresa');
-    }
-
-    return NextResponse.json({ company: mapCompany(data as DbCompany) });
-  } catch (error) {
-    console.error('Erro ao atualizar empresa:', error);
-    return NextResponse.json({ error: 'Falha ao atualizar empresa' }, { status: 500 });
+    return NextResponse.json({ error: 'Erro ao buscar empresa' }, { status: 500 });
   }
 }

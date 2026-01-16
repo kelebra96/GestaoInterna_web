@@ -153,14 +153,16 @@ export default function ChecklistsPage() {
     .slice(0, 8);
 
   // Ranking de lojas
-  const storeStats: Record<string, { completed: number; total: number; avgProgress: number }> = {};
+  const storeStats: Record<string, { completed: number; total: number; avgProgress: number; label: string }> = {};
   executions.forEach((e) => {
-    if (!storeStats[e.storeName]) {
-      storeStats[e.storeName] = { completed: 0, total: 0, avgProgress: 0 };
+    const key = e.storeId || e.storeName || 'loja_desconhecida';
+    const label = e.storeName || e.storeId || 'Loja Desconhecida';
+    if (!storeStats[key]) {
+      storeStats[key] = { completed: 0, total: 0, avgProgress: 0, label };
     }
-    storeStats[e.storeName].total += 1;
+    storeStats[key].total += 1;
     if (e.status === 'completed') {
-      storeStats[e.storeName].completed += 1;
+      storeStats[key].completed += 1;
     }
   });
 
@@ -174,8 +176,8 @@ export default function ChecklistsPage() {
   });
 
   const topStores = Object.entries(storeStats)
-    .map(([name, stats]) => ({
-      name,
+    .map(([_, stats]) => ({
+      name: stats.label,
       completionRate: stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0,
       total: stats.total,
       avgProgress: stats.avgProgress,

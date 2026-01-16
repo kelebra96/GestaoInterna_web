@@ -220,7 +220,15 @@ export default function LojasPage() {
       const json = await res.json();
       const loja = json?.loja as Loja;
       if (loja) {
-        setData((prev) => [loja, ...prev]);
+        // Adicionar companyName e managerName à loja criada
+        const company = companies.find(c => c.id === loja.companyId);
+        const manager = users.find(u => u.uid === loja.managerId);
+        const lojaComNomes: Loja = {
+          ...loja,
+          companyName: company?.tradingName || company?.name || loja.companyId || undefined,
+          managerName: manager?.displayName || undefined,
+        };
+        setData((prev) => [lojaComNomes, ...prev]);
         setToast({ type: 'success', message: 'Loja criada' });
         setCreating(false);
         setNewName(''); setNewCompanyId(''); setNewManagerId(''); setNewAddress(''); setNewCity(''); setNewState('');
@@ -489,7 +497,7 @@ export default function LojasPage() {
                         <td className="px-6 py-5 whitespace-nowrap">
                           <div className="text-sm font-medium text-[#212121]">
                             {(() => {
-                              const date = l.createdAt instanceof Date ? l.createdAt : (l.createdAt as any).toDate?.() || new Date(0);
+                              const date = l.createdAt instanceof Date ? l.createdAt : new Date(l.createdAt);
                               return date.toLocaleDateString('pt-BR', {
                                 day: '2-digit', month: '2-digit', year: 'numeric'
                               });
@@ -497,7 +505,7 @@ export default function LojasPage() {
                           </div>
                           <div className="text-xs text-[#757575] mt-1">
                             {(() => {
-                              const date = l.createdAt instanceof Date ? l.createdAt : (l.createdAt as any).toDate?.() || new Date(0);
+                              const date = l.createdAt instanceof Date ? l.createdAt : new Date(l.createdAt);
                               return date.toLocaleTimeString('pt-BR', {
                                 hour: '2-digit', minute: '2-digit'
                               });

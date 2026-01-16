@@ -58,12 +58,33 @@ export default function UsuarioDetalhePage() {
       const token = await firebaseUser?.getIdToken(true);
       const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const res = await fetch(`/api/usuarios/${encodeURIComponent(id)}`, { cache: 'no-store', headers });
-      if (!res.ok) throw new Error('Falha ao carregar usuário');
-      const json = await res.json();
-      setUser(json.usuario as Usuario);
-      const storesFromUser = (json.usuario?.storeIds as string[] | undefined) || (json.usuario?.storeId ? [json.usuario.storeId] : []);
-      setSelectedStoreIds(storesFromUser);
+      // Carregar usuário e lojas em paralelo para validar IDs
+      const [userRes, lojasRes] = await Promise.all([
+        fetch(`/api/usuarios/${encodeURIComponent(id)}`, { cache: 'no-store', headers }),
+        fetch('/api/lojas', { cache: 'no-store', headers }),
+      ]);
+
+      if (!userRes.ok) throw new Error('Falha ao carregar usuário');
+      const userJson = await userRes.json();
+      setUser(userJson.usuario as Usuario);
+
+      // Carregar lista de lojas válidas
+      let validStoreIds = new Set<string>();
+      if (lojasRes.ok) {
+        const lojasJson = await lojasRes.json();
+        const list: { id: string; name: string }[] = [];
+        (lojasJson.lojas || []).forEach((loja: any) => {
+          validStoreIds.add(loja.id);
+          list.push({ id: loja.id, name: loja.name || loja.id });
+        });
+        setStoresList(list);
+      }
+
+      // Filtrar apenas IDs de lojas que realmente existem
+      const storesFromUser = (userJson.usuario?.storeIds as string[] | undefined) || (userJson.usuario?.storeId ? [userJson.usuario.storeId] : []);
+      const validatedStores = storesFromUser.filter(id => validStoreIds.has(id));
+      setSelectedStoreIds(validatedStores);
+
       setError(null);
     } catch (e: any) {
       console.error(e);
@@ -89,16 +110,13 @@ export default function UsuarioDetalhePage() {
       } catch {}
     })();
 
-    // fetch empresas e lojas para mapear nomes
+    // fetch empresas para mapear nomes
     (async () => {
       try {
         const token = await firebaseUser?.getIdToken();
         const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
-        const [empresasRes, lojasRes] = await Promise.all([
-          fetch('/api/empresas', { cache: 'no-store', headers }),
-          fetch('/api/lojas', { cache: 'no-store', headers }),
-        ]);
+        const empresasRes = await fetch('/api/empresas', { cache: 'no-store', headers });
 
         if (empresasRes.ok) {
           const empresasJson = await empresasRes.json();
@@ -108,18 +126,8 @@ export default function UsuarioDetalhePage() {
           });
           setCompanyMap(map);
         }
-
-        if (lojasRes.ok) {
-          const lojasJson = await lojasRes.json();
-          const list: { id: string; name: string }[] = [];
-          (lojasJson.lojas || []).forEach((loja: any) => {
-            const name = loja.name || loja.id;
-            list.push({ id: loja.id, name });
-          });
-          setStoresList(list);
-        }
       } catch (err) {
-        console.warn('Falha ao mapear empresas/lojas para nomes:', err);
+        console.warn('Falha ao mapear empresas para nomes:', err);
       }
     })();
   }, [id, fetchUser]);
@@ -136,8 +144,10 @@ export default function UsuarioDetalhePage() {
         headers,
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error('Falha ao atualizar usuário');
       const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json?.error || 'Falha ao atualizar usuário');
+      }
       const updated = json?.usuario as Usuario | undefined;
       if (updated) {
         setUser(updated);

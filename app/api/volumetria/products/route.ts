@@ -20,17 +20,58 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
 
+    const search = searchParams.get('search')?.trim();
+
     if (!code) {
-      // List all products from Supabase (produtos_volumetria + products)
-      const { data: volumetriaData } = await supabaseAdmin
-        .from('produtos_volumetria')
-        .select('*');
+      // Buscar produtos com filtro de pesquisa server-side
+      let query = supabaseAdmin
+        .from('produtos')
+        .select('id, nome, ean, sku, descricao');
 
-      const { data: productsData } = await supabaseAdmin
-        .from('products')
-        .select('*');
+      // Aplicar filtro de busca se fornecido
+      if (search && search.length >= 2) {
+        // Detectar padrão de busca:
+        // "termo%" = começa com
+        // "%termo%" = contém (em qualquer lugar)
+        // "%termo" = termina com
+        // "termo" = contém (padrão)
+        let pattern: string;
 
-      const map = new Map<string, any>();
+        if (search.startsWith('%') && search.endsWith('%')) {
+          // %termo% - contém
+          pattern = search;
+        } else if (search.endsWith('%') && !search.startsWith('%')) {
+          // termo% - começa com
+          pattern = search;
+        } else if (search.startsWith('%') && !search.endsWith('%')) {
+          // %termo - termina com
+          pattern = search;
+        } else {
+          // termo - padrão: contém
+          pattern = `%${search}%`;
+        }
+
+        query = query.or(`nome.ilike.${pattern},ean.ilike.${pattern},descricao.ilike.${pattern}`);
+      }
+
+      const { data: productsData } = await query
+        .order('nome', { ascending: true })
+        .limit(200); // Limitar resultados para performance
+
+      // Buscar volumetria para os produtos encontrados
+      const eans = (productsData || []).map((p: any) => p.ean).filter(Boolean);
+      let volumetriaMap = new Map<string, any>();
+
+      if (eans.length > 0) {
+        const { data: volumetriaData } = await supabaseAdmin
+          .from('produtos_volumetria')
+          .select('*')
+          .in('ean', eans);
+
+        (volumetriaData || []).forEach((v: any) => {
+          if (v.ean) volumetriaMap.set(v.ean, v);
+        });
+      }
 
       const buildVol = (data: any) => ({
         largura_cm: data?.largura_cm ?? data?.largura ?? null,
@@ -46,58 +87,34 @@ export async function GET(request: Request) {
         vol.profundidade_cm &&
         vol.peso_kg;
 
-      const upsertProduct = (id: string, data: any) => {
-        if (!id) return;
-        const current = map.get(id) || {};
-        map.set(id, {
-          id,
-          name: current.name || data.name || data.descricao || data.nome || id,
-          ean: current.ean || data.ean || data.barcode,
-          sku: current.sku || data.sku,
-          volumetry: current.volumetry || null,
-          hasVolumetry: current.hasVolumetry || false,
-        });
-      };
-
-      // Process products from products table
-      (productsData || []).forEach((row: any) => {
-        upsertProduct(row.id, row);
-      });
-
-      // Process volumetric data
-      (volumetriaData || []).forEach((row: any) => {
-        const vol = buildVol(row);
-        const ean = row.ean;
-        let key = row.id;
-        if (ean) {
-          const byEan = Array.from(map.values()).find((p) => p.ean === ean);
-          if (byEan) key = byEan.id;
-        }
-        const current = map.get(key) || { id: key };
-        map.set(key, {
-          ...current,
+      const products = (productsData || []).map((row: any) => {
+        const volData = row.ean ? volumetriaMap.get(row.ean) : null;
+        const vol = volData ? buildVol(volData) : null;
+        return {
+          id: row.id,
+          name: row.nome || row.descricao || row.id,
+          ean: row.ean,
+          sku: row.sku,
           volumetry: vol,
           hasVolumetry: hasVolumetry(vol),
-          ean: current.ean || ean,
-          name: current.name || row.descricao || row.nome || key,
-        });
+        };
       });
 
-      const products = Array.from(map.values()).sort((a, b) =>
-        (a.name || '').localeCompare(b.name || '')
-      );
-
-      return NextResponse.json({ products });
+      return NextResponse.json({
+        products,
+        total: products.length,
+        hasMore: products.length === 200,
+      });
     }
 
-    // 1) Try by ID
+    // 1) Try produtos_volumetria by ID
     let { data: product, error } = await supabaseAdmin
       .from('produtos_volumetria')
       .select('*')
       .eq('id', code)
       .single();
 
-    // 2) If not found, try by EAN
+    // 2) If not found, try produtos_volumetria by EAN
     if (error || !product) {
       const { data: byEan } = await supabaseAdmin
         .from('produtos_volumetria')
@@ -108,6 +125,31 @@ export async function GET(request: Request) {
 
       if (byEan) {
         product = byEan;
+      }
+    }
+
+    // 3) If still not found, try main produtos table by EAN
+    if (!product) {
+      const { data: produtoData } = await supabaseAdmin
+        .from('produtos')
+        .select('*')
+        .eq('ean', code)
+        .limit(1)
+        .single();
+
+      if (produtoData) {
+        // Map to expected format
+        product = {
+          id: produtoData.id,
+          ean: produtoData.ean,
+          descricao: produtoData.nome || produtoData.descricao,
+          nome: produtoData.nome,
+          // Volumetria pode não existir
+          largura_cm: null,
+          altura_cm: null,
+          profundidade_cm: null,
+          peso_kg: null,
+        };
       }
     }
 

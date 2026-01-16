@@ -22,6 +22,22 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
+const mapRoleToBackend = (role?: string) => {
+  switch ((role || '').toLowerCase()) {
+    case 'developer':
+    case 'admin':
+      return 'super_admin';
+    case 'manager':
+      return 'gestor_loja';
+    case 'agent':
+      return 'repositor';
+    case 'buyer':
+      return 'merchandiser';
+    default:
+      return 'super_admin';
+  }
+};
+
 interface Address {
   id: string;
   addressCode: string;
@@ -63,7 +79,26 @@ export default function EnderecosPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, user } = useAuth();
+
+  const getAuthHeaders = async () => {
+    if (!firebaseUser) throw new Error('Usuário não autenticado');
+    const token = await firebaseUser.getIdToken(true);
+    const payload = {
+      userId: firebaseUser.uid,
+      orgId: (user as any)?.orgId || user?.companyId || 'default-org',
+      role: mapRoleToBackend(user?.role),
+      storeIds: Array.isArray((user as any)?.storeIds)
+        ? (user as any).storeIds
+        : user?.storeId
+          ? [user.storeId]
+          : [],
+    };
+    return {
+      Authorization: `Bearer ${token}`,
+      'x-user-payload': JSON.stringify(payload),
+    };
+  };
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [topUsers, setTopUsers] = useState<TopUser[]>([]);
@@ -100,14 +135,10 @@ export default function EnderecosPage() {
     try {
       setLoading(true);
 
-      if (!firebaseUser) {
-        throw new Error('Usuário não autenticado');
-      }
-
-      const token = await firebaseUser.getIdToken();
+      const headers = await getAuthHeaders();
 
       const response = await fetch(`/api/inventario/${id}/addresses`, {
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers,
       });
 
       if (!response.ok) {
@@ -142,16 +173,12 @@ export default function EnderecosPage() {
     try {
       setCreating(true);
 
-      if (!firebaseUser) {
-        throw new Error('Usuário não autenticado');
-      }
-
-      const token = await firebaseUser.getIdToken();
+      const headers = await getAuthHeaders();
 
       const response = await fetch(`/api/inventario/${id}/addresses`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          ...headers,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ addressCode: newAddressCode.trim().toUpperCase() }),
@@ -221,16 +248,12 @@ export default function EnderecosPage() {
     try {
       setGenerating(true);
 
-      if (!firebaseUser) {
-        throw new Error('Usuário não autenticado');
-      }
-
-      const token = await firebaseUser.getIdToken();
+      const headers = await getAuthHeaders();
 
       const response = await fetch(`/api/inventario/${id}/addresses/generate`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          ...headers,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -295,15 +318,12 @@ export default function EnderecosPage() {
     try {
       setRangeGenerating(true);
 
-      if (!firebaseUser) {
-        throw new Error('Usuário não autenticado');
-      }
+      const headers = await getAuthHeaders();
 
-      const token = await firebaseUser.getIdToken();
       const response = await fetch(`/api/inventario/${id}/addresses/generate-range`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...headers,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -337,13 +357,10 @@ export default function EnderecosPage() {
 
     try {
       setDeletingId(addressId);
-      if (!firebaseUser) {
-        throw new Error('Usuário não autenticado');
-      }
-      const token = await firebaseUser.getIdToken();
+      const headers = await getAuthHeaders();
       const res = await fetch(`/api/inventario/${id}/addresses/${addressId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers,
       });
       if (!res.ok) {
         const data = await res.json();
@@ -509,17 +526,18 @@ export default function EnderecosPage() {
         }
 
         // Código em texto
+        const addressCode = address.addressCode || address.address_code || '';
         doc.setTextColor(33, 33, 33);
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.text(address.addressCode, x + labelWidth / 2, y + 18, { align: 'center' });
+        doc.text(addressCode, x + labelWidth / 2, y + 18, { align: 'center' });
 
         let rua = '';
         let predio = '';
         let andar = '';
         let apto = '';
         if (labelMode === 'cd') {
-          const parts = address.addressCode.split('.');
+          const parts = addressCode.split('.');
           rua = parts[0] || '';
           predio = parts[1] || '';
           andar = parts[2] || '';
@@ -532,7 +550,7 @@ export default function EnderecosPage() {
         const barcodeAreaW = labelWidth - 16;
         doc.setFillColor(240, 242, 245);
         doc.rect(x + 8, barcodeY, barcodeAreaW, barcodeH, 'F');
-        drawCode39(x + 10, barcodeY + 3, barcodeH - 6, barcodeAreaW - 4, address.addressCode);
+        drawCode39(x + 10, barcodeY + 3, barcodeH - 6, barcodeAreaW - 4, addressCode);
 
         let cursorY = barcodeY + barcodeH + 10;
 

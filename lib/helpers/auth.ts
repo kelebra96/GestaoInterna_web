@@ -77,33 +77,60 @@ async function fetchUserProfile(userId: string): Promise<UserProfileRow | null> 
 
 /**
  * Extracts and parses the user authentication payload from the request headers.
+ * Supports Firebase Auth tokens with x-user-payload header.
  */
 export async function getAuthFromRequest(request: Request): Promise<AuthPayload | null> {
   const authHeader = request.headers.get('authorization');
   const bearer = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
   if (!bearer) return null;
 
+  // Decode JWT to get basic info (Firebase token)
   const decodedFromBearer = decodeJwtWithoutVerification(bearer);
+  if (!decodedFromBearer) {
+    console.error('Failed to decode bearer token');
+    return null;
+  }
 
   try {
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(bearer);
-    if (error || !user) {
-      console.error('Supabase auth validation failed:', error);
+    // 1. Try to get user payload from x-user-payload header (set by frontend)
+    const userPayloadHeader = request.headers.get('x-user-payload');
+    if (userPayloadHeader) {
+      try {
+        const parsed = JSON.parse(userPayloadHeader);
+        const payload = {
+          userId: parsed.userId || decodedFromBearer['user_id'] || decodedFromBearer['sub'],
+          orgId: parsed.orgId || parsed.companyId || 'unknown-org',
+          role: mapRole(parsed.role),
+          storeIds: Array.isArray(parsed.storeIds) ? parsed.storeIds : [],
+          iat: decodedFromBearer?.['iat'] as number | undefined,
+          exp: decodedFromBearer?.['exp'] as number | undefined,
+        };
+
+        const validation = AuthPayloadSchema.safeParse(payload);
+        if (validation.success) {
+          return validation.data;
+        }
+      } catch (parseError) {
+        console.error('Failed to parse x-user-payload header:', parseError);
+      }
+    }
+
+    // 2. Extract user ID from Firebase token
+    const userId = decodedFromBearer['user_id'] || decodedFromBearer['sub'];
+    if (!userId || typeof userId !== 'string') {
+      console.error('No user ID found in token');
       return null;
     }
 
-    const profile = await fetchUserProfile(user.id);
+    // 3. Fetch user profile from Supabase database
+    const profile = await fetchUserProfile(userId);
 
     const roleValue =
       profile?.role ||
-      (user.user_metadata?.role as string | undefined) ||
-      (user.app_metadata?.role as string | undefined) ||
       (decodedFromBearer?.['role'] as string | undefined);
 
     const orgIdValue =
       profile?.company_id ||
-      (user.user_metadata?.companyId as string | undefined) ||
-      (user.user_metadata?.company_id as string | undefined) ||
       (decodedFromBearer?.['orgId'] as string | undefined) ||
       (decodedFromBearer?.['companyId'] as string | undefined) ||
       (decodedFromBearer?.['company_id'] as string | undefined);
@@ -113,14 +140,10 @@ export async function getAuthFromRequest(request: Request): Promise<AuthPayload 
       storeIdsValue = profile.store_ids;
     } else if (profile?.store_id) {
       storeIdsValue = [profile.store_id];
-    } else if (Array.isArray(user.user_metadata?.storeIds)) {
-      storeIdsValue = (user.user_metadata?.storeIds as string[]).filter(Boolean);
-    } else if (user.user_metadata?.storeId) {
-      storeIdsValue = [String(user.user_metadata?.storeId)];
     }
 
     const payload = {
-      userId: user.id,
+      userId: userId,
       orgId: orgIdValue || 'unknown-org',
       role: mapRole(roleValue),
       storeIds: storeIdsValue,

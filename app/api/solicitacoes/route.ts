@@ -84,8 +84,8 @@ export async function GET(request: Request) {
       storeIds: auth.storeIds,
     });
 
-    // Buscar solicitações com base nas permissões do usuário
-    let query = supabaseAdmin.from('solicitacoes').select('*');
+    // Buscar solicitações com base nas permissões do usuário (excluindo rascunhos)
+    let query = supabaseAdmin.from('solicitacoes').select('*').neq('status', 'draft');
 
     // Se o usuário tem lojas específicas (storeIds), filtrar por essas lojas
     if (auth.storeIds && auth.storeIds.length > 0) {

@@ -86,14 +86,51 @@ export async function PATCH(
 
   if (typeof body.active === 'boolean') update.active = body.active;
   if (typeof body.role === 'string') update.role = body.role;
-  if (typeof body.storeId === 'string' || body.storeId === null) update.store_id = body.storeId;
   if (typeof body.companyId === 'string' || body.companyId === null) update.company_id = body.companyId;
+
+  // Processar storeIds primeiro para validação
+  let storeIdsToValidate: string[] = [];
   if (Array.isArray(body.storeIds)) {
-    const filtered = body.storeIds.filter((s: any) => typeof s === 'string');
-    update.store_ids = filtered;
-    if (!Object.prototype.hasOwnProperty.call(update, 'store_id')) {
-      update.store_id = filtered.length > 0 ? filtered[0] : null;
+    storeIdsToValidate = body.storeIds.filter((s: any) => typeof s === 'string' && s.length > 0);
+  }
+  if (typeof body.storeId === 'string' && body.storeId.length > 0) {
+    if (!storeIdsToValidate.includes(body.storeId)) {
+      storeIdsToValidate.push(body.storeId);
     }
+  }
+
+  // Validar se as lojas existem
+  if (storeIdsToValidate.length > 0) {
+    const { data: existingStores, error: storesError } = await supabaseAdmin
+      .from('stores')
+      .select('id')
+      .in('id', storeIdsToValidate);
+
+    if (storesError) {
+      console.error('Erro ao validar lojas:', storesError);
+      return NextResponse.json({ error: 'Erro ao validar lojas' }, { status: 500 });
+    }
+
+    const existingIds = new Set((existingStores || []).map((s: any) => s.id));
+    const invalidIds = storeIdsToValidate.filter(id => !existingIds.has(id));
+
+    if (invalidIds.length > 0) {
+      console.warn('IDs de lojas inválidos:', invalidIds);
+      return NextResponse.json({
+        error: `Loja(s) não encontrada(s): ${invalidIds.join(', ')}`
+      }, { status: 400 });
+    }
+  }
+
+  // Definir store_id e store_ids após validação
+  if (Array.isArray(body.storeIds)) {
+    const filtered = body.storeIds.filter((s: any) => typeof s === 'string' && s.length > 0);
+    update.store_ids = filtered;
+    update.store_id = filtered.length > 0 ? filtered[0] : null;
+  } else if (typeof body.storeId === 'string') {
+    update.store_id = body.storeId.length > 0 ? body.storeId : null;
+  } else if (body.storeId === null) {
+    update.store_id = null;
   }
 
   if (Object.keys(update).length === 0) {

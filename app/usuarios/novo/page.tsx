@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserRole } from '@/lib/types/business';
 import {
@@ -28,6 +28,7 @@ interface Company {
 interface Store {
   id: string;
   name: string;
+  companyId?: string;
 }
 
 const roleLabels: Record<UserRole, string> = {
@@ -57,6 +58,7 @@ export default function NovoUsuarioPage() {
     companyId: '',
     storeId: '',
   });
+  const [allStores, setAllStores] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(false);
@@ -96,8 +98,20 @@ export default function NovoUsuarioPage() {
     fetchCompaniesAndStores();
   }, []);
 
+  // Filtrar lojas pela empresa selecionada
+  const filteredStores = useMemo(() => {
+    if (!formData.companyId) return stores;
+    return stores.filter(s => s.companyId === formData.companyId);
+  }, [stores, formData.companyId]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    // Se mudar a empresa, resetar a loja selecionada
+    if (name === 'companyId') {
+      setFormData({ ...formData, companyId: value, storeId: '' });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const handleBlur = (field: keyof typeof touched) => {
@@ -129,6 +143,12 @@ export default function NovoUsuarioPage() {
       return baseValid;
     }
 
+    // Para manager/agent, precisa de empresa e (loja específica OU todas as lojas)
+    if (formData.role === 'manager' || formData.role === 'agent') {
+      const hasStore = allStores || formData.storeId !== '';
+      return baseValid && formData.companyId !== '' && hasStore;
+    }
+
     return baseValid && formData.companyId !== '';
   };
 
@@ -142,6 +162,10 @@ export default function NovoUsuarioPage() {
       const payload: any = { ...formData };
       if (formData.role === 'developer' || formData.role === 'admin') {
         delete payload.companyId;
+        delete payload.storeId;
+      } else if (allStores && filteredStores.length > 0) {
+        // Enviar todas as lojas da empresa selecionada
+        payload.storeIds = filteredStores.map(s => s.id);
         delete payload.storeId;
       }
       const token = await firebaseUser?.getIdToken(true);
@@ -437,33 +461,79 @@ export default function NovoUsuarioPage() {
                   {(formData.role === 'manager' || formData.role === 'agent') && (
                   <div>
                     <label className="block text-sm font-bold text-[#757575] mb-2">
-                      Loja <span className="text-[#757575]">(opcional)</span>
+                      Loja
                     </label>
-                    {loadingData ? (
-                      <div className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl bg-[#F8F9FA] text-[#757575] font-medium">
-                        Carregando lojas...
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <StoreIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#757575] pointer-events-none" />
-                        <select
-                          name="storeId"
-                          value={formData.storeId}
-                          onChange={handleChange}
-                          className="w-full pl-11 pr-4 py-3 border-2 border-[#E0E0E0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#16476A]/30 focus:border-[#16476A] font-medium bg-white text-[#212121] transition-all appearance-none cursor-pointer"
-                        >
-                          <option value="">Nenhuma loja específica</option>
-                          {stores.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.name}
-                            </option>
-                          ))}
-                        </select>
+
+                    {/* Checkbox Todas as Lojas */}
+                    <div className="mb-3">
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            checked={allStores}
+                            onChange={(e) => {
+                              setAllStores(e.target.checked);
+                              if (e.target.checked) {
+                                setFormData({ ...formData, storeId: '' });
+                              }
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="w-5 h-5 border-2 border-[#E0E0E0] rounded-md bg-white peer-checked:bg-[#3B9797] peer-checked:border-[#3B9797] transition-all duration-200 group-hover:border-[#3B9797]">
+                            <svg className="w-full h-full text-white opacity-0 peer-checked:opacity-100 p-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                          <div className="absolute inset-0 w-5 h-5 peer-checked:block hidden">
+                            <svg className="w-full h-full text-white p-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                        </div>
+                        <span className="text-sm font-medium text-[#212121] group-hover:text-[#3B9797] transition-colors">
+                          Habilitar acesso a todas as lojas
+                        </span>
+                      </label>
+                    </div>
+
+                    {!allStores && (
+                      <>
+                        {loadingData ? (
+                          <div className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl bg-[#F8F9FA] text-[#757575] font-medium">
+                            Carregando lojas...
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            <StoreIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#757575] pointer-events-none" />
+                            <select
+                              name="storeId"
+                              value={formData.storeId}
+                              onChange={handleChange}
+                              className="w-full pl-11 pr-4 py-3 border-2 border-[#E0E0E0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#16476A]/30 focus:border-[#16476A] font-medium bg-white text-[#212121] transition-all appearance-none cursor-pointer"
+                            >
+                              <option value="">Selecione uma loja</option>
+                              {filteredStores.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                        <p className="mt-2 text-xs text-[#757575]">
+                          Vincule o usuário a uma loja específica
+                        </p>
+                      </>
+                    )}
+
+                    {allStores && (
+                      <div className="p-3 bg-gradient-to-r from-[#3B9797]/10 to-[#16476A]/10 border border-[#3B9797]/30 rounded-lg">
+                        <p className="text-xs text-[#16476A] flex items-start gap-2">
+                          <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                          <span>O usuário terá acesso a todas as lojas da empresa ({filteredStores.length} {filteredStores.length === 1 ? 'loja' : 'lojas'})</span>
+                        </p>
                       </div>
                     )}
-                    <p className="mt-2 text-xs text-[#757575]">
-                      Vincule o usuário a uma loja específica (útil para gerentes e agentes)
-                    </p>
                   </div>
                   )}
                 </div>

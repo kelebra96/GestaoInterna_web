@@ -19,6 +19,9 @@ export default function ConfiguracoesPage() {
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [showClearDBModal, setShowClearDBModal] = useState(false);
   const [clearingDB, setClearingDB] = useState(false);
+  const [migrationRunning, setMigrationRunning] = useState(false);
+  const [migrationMessage, setMigrationMessage] = useState<string | null>(null);
+  const [migrationStats, setMigrationStats] = useState<{ inserted: number; updated: number; skipped: number; total: number } | null>(null);
 
   useEffect(() => {
     try {
@@ -155,6 +158,46 @@ export default function ConfiguracoesPage() {
     }
   };
 
+  const handleMigrateProducts = async () => {
+    if (!firebaseUser) {
+      setToast({ type: 'error', message: 'Faça login para executar a migração.' });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+
+    setMigrationRunning(true);
+    setMigrationMessage(null);
+    setMigrationStats(null);
+
+    try {
+      const token = await firebaseUser.getIdToken();
+      const res = await fetch('/api/migrate/produtos', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: 'no-store',
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || 'Falha ao migrar produtos.');
+      }
+
+      setMigrationStats(data.stats || null);
+      const successMessage = data.message || 'Migração concluída com sucesso!';
+      setMigrationMessage(successMessage);
+      setToast({ type: 'success', message: successMessage });
+    } catch (error: any) {
+      const message = error?.message || 'Falha ao migrar produtos.';
+      setMigrationMessage(message);
+      setToast({ type: 'error', message });
+    } finally {
+      setMigrationRunning(false);
+      setTimeout(() => setToast(null), 3200);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F8F9FA] to-[#E9ECEF]">
       {/* Toast Notification */}
@@ -259,6 +302,63 @@ export default function ConfiguracoesPage() {
                   <strong className="text-[#16476A]">Informação:</strong> Alterne entre o banco de dados em nuvem (Firebase) e o banco de dados local (MongoDB). Esta configuração afeta onde os dados são armazenados e recuperados.
                 </p>
               </div>
+            </div>
+          </div>
+
+          {/* Migração Firestore ➜ Supabase */}
+          <div className="bg-white rounded-2xl border border-[#E0E0E0] shadow-xl overflow-hidden">
+            <div className="bg-gradient-to-r from-[#1F53A2] to-[#2E67C3] px-6 py-4">
+              <div className="flex items-center gap-3">
+                <RefreshCw className="w-5 h-5 text-white" />
+                <h2 className="text-lg font-bold text-white">Migração Firestore</h2>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-[#757575]">
+                Sincroniza a coleção <strong>produtos</strong> do Firestore com a tabela <strong>produtos</strong> do Supabase. Os campos de comprador e fornecedor são atualizados com os valores que já existem no Firestore.
+              </p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <button
+                  onClick={handleMigrateProducts}
+                  disabled={migrationRunning}
+                  className={`inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold shadow-lg transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-offset-2 ${
+                    migrationRunning
+                      ? 'bg-gradient-to-r from-[#3B9797] to-[#2c7a7a] text-white opacity-80 cursor-wait'
+                      : 'bg-gradient-to-r from-[#16476A] to-[#1F53A2] text-white hover:shadow-xl focus:ring-[#1F53A2]/30'
+                  }`}
+                >
+                  <RefreshCw className={`w-5 h-5 ${migrationRunning ? 'animate-spin' : ''}`} />
+                  {migrationRunning ? 'Migrando...' : 'Migrar agora'}
+                </button>
+                <p className="text-xs text-[#757575] max-w-md">
+                  Use este botão apenas quando precisar reaplicar os dados do Firestore no Supabase (ex.: para preencher campos de comprador). A operação é idempotente e pode ser repetida quantas vezes precisar.
+                </p>
+              </div>
+              {migrationMessage && (
+                <div className="text-sm text-[#1F53A2] font-medium">
+                  {migrationMessage}
+                </div>
+              )}
+              {migrationStats && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-[#1F53A2]">
+                  <div className="px-3 py-2 rounded-xl bg-[#F3FAFF] border border-[#1F53A2]/20">
+                    <div className="text-[10px] uppercase tracking-wide">Total lidos</div>
+                    <div className="text-base font-bold">{migrationStats.total}</div>
+                  </div>
+                  <div className="px-3 py-2 rounded-xl bg-[#F3FAFF] border border-[#1F53A2]/20">
+                    <div className="text-[10px] uppercase tracking-wide">Inseridos</div>
+                    <div className="text-base font-bold">{migrationStats.inserted}</div>
+                  </div>
+                  <div className="px-3 py-2 rounded-xl bg-[#F3FAFF] border border-[#1F53A2]/20">
+                    <div className="text-[10px] uppercase tracking-wide">Atualizados</div>
+                    <div className="text-base font-bold">{migrationStats.updated}</div>
+                  </div>
+                  <div className="px-3 py-2 rounded-xl bg-[#F3FAFF] border border-[#1F53A2]/20">
+                    <div className="text-[10px] uppercase tracking-wide">Ignorados</div>
+                    <div className="text-base font-bold">{migrationStats.skipped}</div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

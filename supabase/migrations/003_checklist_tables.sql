@@ -99,6 +99,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_checklist_templates_updated_at ON checklist_templates;
+DROP TRIGGER IF EXISTS trigger_checklist_executions_updated_at ON checklist_executions;
+
 CREATE TRIGGER trigger_checklist_templates_updated_at
   BEFORE UPDATE ON checklist_templates
   FOR EACH ROW

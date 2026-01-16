@@ -110,8 +110,10 @@ export default function UsuariosPage() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (firebaseUser) {
+      fetchData();
+    }
+  }, [firebaseUser]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

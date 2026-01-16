@@ -48,6 +48,7 @@ export default function NewChecklistTemplatePage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [companyId, setCompanyId] = useState('');
   const [loadingCompanies, setLoadingCompanies] = useState(true);
+  const [fallbackCompanyName, setFallbackCompanyName] = useState('');
 
   // Dados do template
   const [name, setName] = useState('');
@@ -71,7 +72,9 @@ export default function NewChecklistTemplatePage() {
     const fetchCompanies = async () => {
       try {
         setLoadingCompanies(true);
-        const response = await fetch('/api/companies', { cache: 'no-store' });
+        const token = await firebaseUser?.getIdToken();
+        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+        const response = await fetch('/api/companies', { headers, cache: 'no-store' });
         if (response.ok) {
           const data = await response.json();
           setCompanies(data.companies || []);
@@ -86,7 +89,45 @@ export default function NewChecklistTemplatePage() {
     };
 
     fetchCompanies();
-  }, []);
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    const fetchCompanyName = async () => {
+      if (!user?.companyId) {
+        setFallbackCompanyName('');
+        return;
+      }
+
+      if (companies.some((c) => c.id === user.companyId)) {
+        setFallbackCompanyName('');
+        return;
+      }
+
+      if (!companyId) {
+        setFallbackCompanyName('');
+      }
+
+      try {
+        const token = await firebaseUser?.getIdToken();
+        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+        const response = await fetch(`/api/companies/${encodeURIComponent(user.companyId)}`, {
+          cache: 'no-store',
+          headers,
+        });
+        if (!response.ok) {
+          setFallbackCompanyName(user.companyId);
+          return;
+        }
+        const data = await response.json();
+        setFallbackCompanyName(data.company?.name || user.companyId);
+      } catch (error) {
+        console.error('Erro ao buscar nome da empresa:', error);
+        setFallbackCompanyName(user.companyId);
+      }
+    };
+
+    fetchCompanyName();
+  }, [user, companies, companyId, firebaseUser]);
 
   useEffect(() => {
     if (user?.companyId) {
@@ -101,7 +142,7 @@ export default function NewChecklistTemplatePage() {
 
   const availableCompanies =
     user?.companyId && !companies.some((c) => c.id === user.companyId)
-      ? [{ id: user.companyId, name: user.companyId }, ...companies]
+      ? [{ id: user.companyId, name: fallbackCompanyName || user.companyId }, ...companies]
       : companies;
 
   const addQuestion = () => {

@@ -80,8 +80,12 @@ export async function GET(
 
         return {
           id: data.id,
-          ...data,
+          addressCode: data.address_code || '',
+          status: data.status || 'pending',
+          assignedUserId: data.assigned_user_id,
           assignedUserName,
+          itemsCounted: data.items_counted || 0,
+          itemsExpected: data.items_expected || 0,
           createdAt: data.created_at ? new Date(data.created_at) : null,
           updatedAt: data.updated_at ? new Date(data.updated_at) : null,
           startedAt: data.started_at ? new Date(data.started_at) : null,
@@ -92,7 +96,7 @@ export async function GET(
     );
 
     // Ordenar por addressCode
-    addresses.sort((a: any, b: any) => a.address_code.localeCompare(b.address_code));
+    addresses.sort((a: any, b: any) => (a.addressCode || '').localeCompare(b.addressCode || ''));
 
     // Calcular estatísticas de produtividade por usuário
     const userStats = new Map<string, {
@@ -103,17 +107,17 @@ export async function GET(
     }>();
 
     addresses.forEach((address: any) => {
-      if (address.assigned_user_id && address.status === 'completed') {
-        const existing = userStats.get(address.assigned_user_id);
+      if (address.assignedUserId && address.status === 'completed') {
+        const existing = userStats.get(address.assignedUserId);
         if (existing) {
           existing.addressesCompleted += 1;
-          existing.totalItemsCounted += address.items_counted || 0;
+          existing.totalItemsCounted += address.itemsCounted || 0;
         } else {
-          userStats.set(address.assigned_user_id, {
-            userId: address.assigned_user_id,
-            userName: address.assignedUserName || address.assigned_user_id,
+          userStats.set(address.assignedUserId, {
+            userId: address.assignedUserId,
+            userName: address.assignedUserName || address.assignedUserId,
             addressesCompleted: 1,
-            totalItemsCounted: address.items_counted || 0,
+            totalItemsCounted: address.itemsCounted || 0,
           });
         }
       }

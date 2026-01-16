@@ -255,15 +255,18 @@ export async function POST(
     });
   } catch (error: any) {
     console.error('Erro ao importar arquivo:', error);
-    await supabaseAdmin
-      .from('inventories')
-      .update({
-        import_status: 'failed',
-        import_message: error.message || 'Erro desconhecido',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', (await params).id)
-      .catch(() => {});
+    try {
+      await supabaseAdmin
+        .from('inventories')
+        .update({
+          import_status: 'failed',
+          import_message: error.message || 'Erro desconhecido',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', (await params).id);
+    } catch (updateError) {
+      console.error('Erro ao atualizar status de falha:', updateError);
+    }
     return NextResponse.json(
       { error: 'Erro ao importar arquivo: ' + error.message },
       { status: 500 }

@@ -98,12 +98,17 @@ export default function TemplateProductsPage() {
     };
   };
 
-  const fetchProductList = async () => {
+  const fetchProductList = async (searchTerm?: string) => {
     try {
       setProductListLoading(true);
       setProductListError(null);
       const headers = await getAuthHeaders().catch(() => ({} as any));
-      const response = await fetch(`/api/volumetria/products`, { cache: 'no-store', headers });
+      const params = new URLSearchParams();
+      if (searchTerm && searchTerm.length >= 2) {
+        params.set('search', searchTerm);
+      }
+      const url = `/api/volumetria/products${params.toString() ? `?${params}` : ''}`;
+      const response = await fetch(url, { cache: 'no-store', headers });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         throw new Error(body.error || 'Falha ao listar produtos');
@@ -313,6 +318,90 @@ export default function TemplateProductsPage() {
     setShowAddModal(false);
   };
 
+  const handleIncludeAllFiltered = () => {
+    if (filteredProductList.length === 0) {
+      alert('Nenhum produto para incluir.');
+      return;
+    }
+
+    const confirmed = confirm(
+      `Deseja incluir todos os ${filteredProductList.length} produtos listados no planograma?\n\nOs produtos serão adicionados sequencialmente em cada prateleira.`
+    );
+    if (!confirmed) return;
+
+    // Calcular posição ocupada atual em cada prateleira (considerando slots existentes)
+    const shelfOccupancy: Map<string, number> = new Map();
+    for (const shelf of shelves) {
+      shelfOccupancy.set(shelf.id, 0);
+    }
+
+    // Calcular onde termina cada slot existente em cada prateleira
+    for (const slot of slots) {
+      const currentEnd = shelfOccupancy.get(slot.shelfId) || 0;
+      const slotEnd = slot.positionX + (slot.width * slot.facings);
+      if (slotEnd > currentEnd) {
+        shelfOccupancy.set(slot.shelfId, slotEnd);
+      }
+    }
+
+    // Adicionar produtos distribuindo automaticamente nas prateleiras
+    const newSlots: any[] = [];
+    let currentShelfIndex = 0;
+    let addedCount = 0;
+    let skippedCount = 0;
+
+    for (const product of filteredProductList) {
+      const productWidth = product?.volumetry?.largura_cm ? Number(product.volumetry.largura_cm) : 10;
+      const pd = product?.volumetry?.profundidade_cm ? Number(product.volumetry.profundidade_cm) : undefined;
+
+      // Encontrar uma prateleira com espaço disponível
+      let foundShelf = false;
+      const startIndex = currentShelfIndex;
+
+      do {
+        const shelfId = shelves[currentShelfIndex].id;
+        const shelfWidth = shelves[currentShelfIndex].width;
+        const currentEnd = shelfOccupancy.get(shelfId) || 0;
+
+        if (currentEnd + productWidth <= shelfWidth) {
+          // Cabe nesta prateleira
+          newSlots.push({
+            productId: product.ean || product.id,
+            productName: product.name,
+            shelfId: shelfId,
+            positionX: currentEnd,
+            width: productWidth,
+            depth: pd,
+            facings: 1,
+            capacity: 10,
+          });
+
+          // Atualizar ocupação da prateleira
+          shelfOccupancy.set(shelfId, currentEnd + productWidth);
+          addedCount++;
+          foundShelf = true;
+          break;
+        } else {
+          // Prateleira cheia, tentar a próxima
+          currentShelfIndex = (currentShelfIndex + 1) % shelves.length;
+        }
+      } while (currentShelfIndex !== startIndex);
+
+      if (!foundShelf) {
+        // Não há espaço em nenhuma prateleira
+        skippedCount++;
+      }
+    }
+
+    setSlots((prev) => [...prev, ...newSlots]);
+
+    if (skippedCount > 0) {
+      alert(`${addedCount} produtos adicionados.\n${skippedCount} produtos não puderam ser adicionados por falta de espaço nas prateleiras.`);
+    } else {
+      alert(`${addedCount} produtos adicionados e distribuídos automaticamente nas prateleiras!`);
+    }
+  };
+
   const includeSingleProduct = (product: any) => {
     if (product.hasVolumetry) {
       addSlotFromProduct(product);
@@ -322,15 +411,18 @@ export default function TemplateProductsPage() {
     openVolumeModal(product.ean || product.id, { ...product.volumetry, descricao: product.name, ean: product.ean });
   };
 
-  const filteredProductList = useMemo(() => {
-    const term = productSearch.trim().toLowerCase();
-    if (!term) return productList;
-    return productList.filter((p) => {
-      const name = (p.name || '').toLowerCase();
-      const ean = (p.ean || '').toLowerCase();
-      return name.includes(term) || ean.includes(term);
-    });
-  }, [productList, productSearch]);
+  // Busca server-side com debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (productSearch.length >= 2 || productSearch.length === 0) {
+        fetchProductList(productSearch);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [productSearch]);
+
+  // Lista já vem filtrada do servidor
+  const filteredProductList = productList;
 
   // Hook de validação de espaço
   const {
@@ -380,11 +472,7 @@ export default function TemplateProductsPage() {
     }
   }, [firebaseUser, id]);
 
-  useEffect(() => {
-    if (firebaseUser) {
-      fetchProductList();
-    }
-  }, [firebaseUser]);
+  // Carregamento inicial já é feito pelo useEffect de busca com productSearch vazio
 
   // Buscar dados do produto automaticamente ao digitar
   useEffect(() => {
@@ -807,15 +895,23 @@ export default function TemplateProductsPage() {
                     <input
                       value={productSearch}
                       onChange={(e) => setProductSearch(e.target.value)}
-                      placeholder="Buscar por produto ou EAN"
-                      className="text-sm text-[#212121] focus:outline-none"
+                      placeholder="Buscar: termo% (início) ou %termo% (contém)"
+                      className="text-sm text-[#212121] focus:outline-none w-64"
                     />
                   </div>
                   <button
-                    onClick={handleBulkInclude}
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#BF092F] hover:bg-[#16476A] text-white text-sm"
+                    onClick={handleIncludeAllFiltered}
+                    disabled={filteredProductList.length === 0}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#3B9797] hover:bg-[#2d7a7a] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold"
                   >
-                    Incluir selecionados
+                    Incluir todos ({filteredProductList.length})
+                  </button>
+                  <button
+                    onClick={handleBulkInclude}
+                    disabled={selectedProducts.size === 0}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#BF092F] hover:bg-[#16476A] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm"
+                  >
+                    Incluir selecionados ({selectedProducts.size})
                   </button>
                 </div>
               </div>
