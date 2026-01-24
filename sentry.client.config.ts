@@ -83,6 +83,5 @@ if (SENTRY_DSN) {
   });
 
   console.log('✅ Sentry initialized (client)');
-} else {
-  console.warn('⚠️  Sentry DSN not configured. Error tracking disabled.');
 }
+// Silenciado: Sentry DSN não configurado

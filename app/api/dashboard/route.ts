@@ -162,6 +162,19 @@ export async function GET() {
     let solicitacoesUltimos7a14Dias = 0;
     let totalItens = 0;
 
+    // Métricas financeiras
+    let valorTotalSolicitado = 0;      // Total R$ de todos os itens solicitados
+    let valorTotalAprovado = 0;        // Total R$ de itens aprovados (economia gerada)
+    let valorTotalRejeitado = 0;       // Total R$ de itens rejeitados
+    let valorTotalPendente = 0;        // Total R$ de itens pendentes
+    let itensAprovados = 0;
+    let itensRejeitados = 0;
+    let itensPendentes = 0;
+
+    // Dados para projeção financeira
+    const valorPorDia: { [key: string]: number } = {};
+    const itensPorDiaStatus: { [key: string]: { approved: number; rejected: number; pending: number } } = {};
+
     // Processar cada solicitação
     for (const solicitacao of solicitacoesData || []) {
       const status = ['pending', 'batched', 'closed'].includes(String(solicitacao.status))
@@ -265,6 +278,44 @@ export async function GET() {
           // Só processar se tiver algum identificador
           if (productId) {
             totalItens++;
+
+            // Calcular valor do item (preço * quantidade)
+            const precoAtual = parseFloat(item.preco_atual) || 0;
+            const quantidade = parseInt(item.qtd) || parseInt(item.quantidade) || 1;
+            const valorItem = precoAtual * quantidade;
+            const itemStatus = item.status || 'pending';
+
+            // Métricas financeiras por status do item
+            valorTotalSolicitado += valorItem;
+
+            if (itemStatus === 'approved') {
+              valorTotalAprovado += valorItem;
+              itensAprovados++;
+            } else if (itemStatus === 'rejected') {
+              valorTotalRejeitado += valorItem;
+              itensRejeitados++;
+            } else {
+              valorTotalPendente += valorItem;
+              itensPendentes++;
+            }
+
+            // Acumular valor por dia para projeção
+            const itemDate = new Date(item.created_at || solicitacao.created_at);
+            const itemDateKey = itemDate.toISOString().split('T')[0];
+            if (itemDate >= thirtyDaysAgo) {
+              valorPorDia[itemDateKey] = (valorPorDia[itemDateKey] || 0) + valorItem;
+
+              if (!itensPorDiaStatus[itemDateKey]) {
+                itensPorDiaStatus[itemDateKey] = { approved: 0, rejected: 0, pending: 0 };
+              }
+              if (itemStatus === 'approved') {
+                itensPorDiaStatus[itemDateKey].approved++;
+              } else if (itemStatus === 'rejected') {
+                itensPorDiaStatus[itemDateKey].rejected++;
+              } else {
+                itensPorDiaStatus[itemDateKey].pending++;
+              }
+            }
 
             // Contagem de produtos
             if (!produtosContagem[productId]) {
@@ -565,6 +616,120 @@ export async function GET() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 50);
 
+    // Calcular taxas de aprovação/rejeição
+    const totalItensProcessados = itensAprovados + itensRejeitados + itensPendentes;
+    const taxaAprovacao = totalItensProcessados > 0 ? Number(((itensAprovados / totalItensProcessados) * 100).toFixed(1)) : 0;
+    const taxaRejeicao = totalItensProcessados > 0 ? Number(((itensRejeitados / totalItensProcessados) * 100).toFixed(1)) : 0;
+
+    // Dados para gráfico de projeção financeira (últimos 30 dias + projeção 7 dias)
+    const valorChartData = Object.entries(valorPorDia)
+      .map(([date, valor]) => ({ date, valor: Number(valor.toFixed(2)) }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // Calcular média dos últimos 7 dias para projeção
+    const ultimosValores = valorChartData.slice(-7);
+    const mediaValorDiario = ultimosValores.length > 0
+      ? ultimosValores.reduce((sum, d) => sum + d.valor, 0) / ultimosValores.length
+      : 0;
+
+    // Gerar projeção para os próximos 7 dias
+    const projecaoFinanceira: Array<{ date: string; valor: number; projetado: boolean }> = [];
+
+    // Adicionar dados históricos
+    valorChartData.forEach(d => {
+      projecaoFinanceira.push({ date: d.date, valor: d.valor, projetado: false });
+    });
+
+    // Adicionar projeção
+    for (let i = 1; i <= 7; i++) {
+      const futureDate = new Date(now.getTime() + i * 24 * 60 * 60 * 1000);
+      const futureDateKey = futureDate.toISOString().split('T')[0];
+      // Aplicar tendência de crescimento na projeção
+      const tendencia = parseFloat(mudancaSemanal) / 100;
+      const valorProjetado = mediaValorDiario * (1 + (tendencia * i / 7));
+      projecaoFinanceira.push({
+        date: futureDateKey,
+        valor: Number(valorProjetado.toFixed(2)),
+        projetado: true,
+      });
+    }
+
+    // Dados de status de itens por dia para gráfico
+    const itensStatusChartData = Object.entries(itensPorDiaStatus)
+      .map(([date, status]) => ({
+        date,
+        aprovados: status.approved,
+        rejeitados: status.rejected,
+        pendentes: status.pending,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // Análise de Pareto financeira (top produtos por valor)
+    const produtosComValor: Record<string, { count: number; name: string; valor: number; ean?: string }> = {};
+
+    // Calcular valor total por produto (necessário nova iteração)
+    for (const solicitacao of solicitacoesData || []) {
+      try {
+        const { data: itensData } = await supabaseAdmin
+          .from('solicitacao_itens')
+          .select('*')
+          .eq('solicitacao_id', solicitacao.id);
+
+        if (!itensData) continue;
+
+        for (const item of itensData) {
+          let productId = item.product_id || item.produto_id || item.ean;
+          const descricao = item.descricao || item.description || item.nome;
+
+          if (!productId && descricao) {
+            productId = `desc_${descricao.toLowerCase().replace(/[^a-z0-9]+/g, '_').substring(0, 50)}`;
+          }
+
+          if (productId) {
+            const precoAtual = parseFloat(item.preco_atual) || 0;
+            const quantidade = parseInt(item.qtd) || parseInt(item.quantidade) || 1;
+            const valorItem = precoAtual * quantidade;
+
+            if (!produtosComValor[productId]) {
+              produtosComValor[productId] = {
+                count: 0,
+                name: descricao || 'Produto Desconhecido',
+                valor: 0,
+                ean: item.ean,
+              };
+            }
+            produtosComValor[productId].count++;
+            produtosComValor[productId].valor += valorItem;
+          }
+        }
+      } catch (error) {
+        // Silently continue
+      }
+    }
+
+    // Ordenar por valor para Pareto
+    const paretoFinanceiro = Object.entries(produtosComValor)
+      .map(([id, data]) => ({
+        productId: id,
+        productName: data.name,
+        count: data.count,
+        valor: Number(data.valor.toFixed(2)),
+        ean: data.ean,
+      }))
+      .sort((a, b) => b.valor - a.valor)
+      .slice(0, 20);
+
+    // Calcular percentual acumulado para Pareto
+    const valorTotalPareto = paretoFinanceiro.reduce((sum, p) => sum + p.valor, 0);
+    let acumuladoPareto = 0;
+    const paretoComAcumulado = paretoFinanceiro.map(p => {
+      acumuladoPareto += p.valor;
+      return {
+        ...p,
+        percentualAcumulado: valorTotalPareto > 0 ? Number(((acumuladoPareto / valorTotalPareto) * 100).toFixed(1)) : 0,
+      };
+    });
+
     // Preparar resposta
     const dashboardData = {
       kpis: {
@@ -581,6 +746,20 @@ export async function GET() {
         solicitacoesUltimos7Dias,
         mudancaSemanal: parseFloat(mudancaSemanal),
       },
+      // Novas métricas financeiras
+      financeiro: {
+        valorTotalSolicitado: Number(valorTotalSolicitado.toFixed(2)),
+        valorTotalAprovado: Number(valorTotalAprovado.toFixed(2)),
+        valorTotalRejeitado: Number(valorTotalRejeitado.toFixed(2)),
+        valorTotalPendente: Number(valorTotalPendente.toFixed(2)),
+        itensAprovados,
+        itensRejeitados,
+        itensPendentes,
+        taxaAprovacao,
+        taxaRejeicao,
+        mediaValorDiario: Number(mediaValorDiario.toFixed(2)),
+        projecaoSemanal: Number((mediaValorDiario * 7).toFixed(2)),
+      },
       solicitacoesPorStatus: statusCounters,
       solicitacoesPorLoja,
       solicitacoesRecentes,
@@ -591,6 +770,11 @@ export async function GET() {
       rankingPorLoja,
       rankingPorComprador,
       rankingPorProduto,
+      // Novos dados para gráficos
+      projecaoFinanceira,
+      itensStatusChartData,
+      paretoFinanceiro: paretoComAcumulado,
+      valorChartData,
       lastUpdated: new Date().toISOString(),
     };
 
@@ -601,8 +785,15 @@ export async function GET() {
         'Expires': '0',
       },
     });
-  } catch (error) {
-    console.error('Error fetching dashboard data:', error);
-    return NextResponse.json({ error: 'Failed to fetch dashboard data' }, { status: 500 });
+  } catch (error: any) {
+    console.error('[DASHBOARD] Error fetching dashboard data:', error);
+    console.error('[DASHBOARD] Error message:', error?.message);
+    console.error('[DASHBOARD] Error code:', error?.code);
+    console.error('[DASHBOARD] Error details:', error?.details);
+    return NextResponse.json({
+      error: 'Failed to fetch dashboard data',
+      details: error?.message || 'Unknown error',
+      code: error?.code || 'UNKNOWN'
+    }, { status: 500 });
   }
 }

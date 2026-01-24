@@ -1,14 +1,30 @@
 'use client';
 
 import { useMeasurementStore } from '@/stores/useMeasurementStore';
-import { useState } from 'react';
-import { Ruler, RotateCcw, Save, Box, Maximize } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Ruler, RotateCcw, Save, Box, Maximize, CheckCircle, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { saveMeasurement } from '@/lib/ar/measurementService';
-import toast from 'react-hot-toast';
 
 interface MeasurementOverlayProps {
   onStartAR: () => void;
+}
+
+// Simple toast notification component
+function Toast({ message, type, onClose }: { message: string; type: 'success' | 'error'; onClose: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-[100] px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 ${
+      type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+    }`}>
+      {type === 'success' ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+      <span className="font-medium">{message}</span>
+    </div>
+  );
 }
 
 export function MeasurementOverlay({ onStartAR }: MeasurementOverlayProps) {
@@ -17,10 +33,15 @@ export function MeasurementOverlay({ onStartAR }: MeasurementOverlayProps) {
   const [savedMeasurements, setSavedMeasurements] = useState<any[]>([]);
   const [showSaved, setShowSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+  };
 
   const handleSave = async () => {
     if (!measurement || !user) {
-      toast.error('Erro: usuário não autenticado');
+      showToast('Erro: usuário não autenticado', 'error');
       return;
     }
 
@@ -46,7 +67,7 @@ export function MeasurementOverlay({ onStartAR }: MeasurementOverlayProps) {
       saved.push(newMeasurement);
       localStorage.setItem('ar-measurements', JSON.stringify(saved));
 
-      toast.success('Medição salva com sucesso!');
+      showToast('Medição salva com sucesso!', 'success');
 
       // Reset após salvar
       setTimeout(() => {
@@ -54,7 +75,7 @@ export function MeasurementOverlay({ onStartAR }: MeasurementOverlayProps) {
       }, 1500);
     } catch (error: any) {
       console.error('Erro ao salvar medição:', error);
-      toast.error(error.message || 'Erro ao salvar medição');
+      showToast(error.message || 'Erro ao salvar medição', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -86,6 +107,15 @@ export function MeasurementOverlay({ onStartAR }: MeasurementOverlayProps) {
 
   return (
     <>
+      {/* Toast notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       {/* Header com instruções */}
       <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20">

@@ -61,7 +61,7 @@ async function fetchUserProfile(userId: string): Promise<UserProfileRow | null> 
       .from('users')
       .select('id, role, company_id, store_id, store_ids')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching user profile from Supabase:', error);

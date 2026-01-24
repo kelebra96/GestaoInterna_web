@@ -23,8 +23,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { db } from '@/lib/firebase-client';
-import { collection, query as firestoreQuery, where, onSnapshot, getDoc, doc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase-client';
 
 interface Conversation {
   id: string;
@@ -40,7 +39,7 @@ interface Conversation {
 
 export default function MensagensPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, firebaseUser } = useAuth();
   const [data, setData] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +47,7 @@ export default function MensagensPage() {
 
   // Nova conversa - estado
   const [newOpen, setNewOpen] = useState(false);
-  const [users, setUsers] = useState<Array<{ id: string; displayName: string; email: string; active: boolean }>>([]);
+  const [users, setUsers] = useState<Array<{ id: string; displayName: string; email: string; active: boolean; isOnline?: boolean; lastSeen?: string }>>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -99,91 +98,33 @@ export default function MensagensPage() {
     // Carregar dados iniciais
     fetchData();
 
-    // Configurar listener em tempo real para conversas
-    console.log('🔥 Configurando listener em tempo real para conversas do userId:', currentUserId);
+    // Configurar listener em tempo real para conversas (Supabase)
+    console.log('🔥 Configurando listener Supabase para conversas do userId:', currentUserId);
 
-    const conversationsRef = collection(db, 'conversations');
-    const q = firestoreQuery(
-      conversationsRef,
-      where('participants', 'array-contains', currentUserId)
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      async (snapshot) => {
-        console.log('🔥 Snapshot de conversas recebido! Mudanças:', snapshot.docChanges().length);
-
-        // Buscar status online dos participantes
-        const allParticipantIds = new Set<string>();
-        snapshot.docs.forEach(docSnap => {
-          const participants = docSnap.data()?.participants || [];
-          participants.forEach((id: string) => allParticipantIds.add(id));
-        });
-
-        // Buscar informações de presença dos usuários
-        const onlineStatus: Record<string, boolean> = {};
-        if (allParticipantIds.size > 0) {
-          const userDocs = await Promise.all(
-            Array.from(allParticipantIds).map(id => getDoc(doc(db, 'users', id)))
-          );
-          userDocs.forEach(userDoc => {
-            if (userDoc.exists()) {
-              const userData = userDoc.data() || {};
-              const lastSeen = userData.lastSeen?.toDate?.() || null;
-              // Considera online se lastSeen foi nos últimos 5 minutos
-              const isOnline = lastSeen ? (Date.now() - lastSeen.getTime() < 5 * 60 * 1000) : false;
-              onlineStatus[userDoc.id] = isOnline;
-
-              console.log(`👤 User ${userDoc.id}:`, {
-                lastSeen: lastSeen ? lastSeen.toISOString() : 'nunca',
-                diff: lastSeen ? `${Math.floor((Date.now() - lastSeen.getTime()) / 1000)}s atrás` : 'N/A',
-                isOnline
-              });
-            }
-          });
+    const channel = supabase
+      .channel('conversations-list')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Escutar INSERT e UPDATE
+          schema: 'public',
+          table: 'conversations',
+          filter: `participants=cs.{${currentUserId}}`, // cs = contains (array contains)
+        },
+        (payload) => {
+          console.log('🔥 Supabase Realtime: Conversa atualizada!', payload);
+          fetchData(); // Recarrega a lista completa para garantir consistência
         }
+      )
+      .subscribe();
 
-        console.log('🟢 Status online final:', onlineStatus);
-
-        const conversations = snapshot.docs
-          .map((docSnap) => {
-            const data = docSnap.data();
-            return {
-              id: docSnap.id,
-              participants: data.participants || [],
-              participantNames: data.participantNames || {},
-              lastMessage: data.lastMessage || '',
-              lastMessageAt: data.lastMessageAt?.toDate?.()?.toISOString() || new Date(0).toISOString(),
-              lastMessageBy: data.lastMessageBy || '',
-              unreadCount: data.unreadCount || {},
-              createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date(0).toISOString(),
-              onlineStatus,
-            };
-          })
-          .sort((a, b) => {
-            const dateA = new Date(a.lastMessageAt).getTime();
-            const dateB = new Date(b.lastMessageAt).getTime();
-            return dateB - dateA;
-          });
-
-        console.log('🔥 Conversas atualizadas em tempo real:', conversations.length);
-        setData(conversations);
-        setLoading(false);
-        setError(null);
-      },
-      (error) => {
-        console.error('❌ Erro no listener de conversas:', error);
-        setError('Erro ao carregar conversas');
-        setLoading(false);
-        // Fallback para polling se o listener falhar
-        const interval = setInterval(fetchData, 30000);
-        return () => clearInterval(interval);
-      }
-    );
+    // Polling de segurança a cada 30s
+    const pollingInterval = setInterval(fetchData, 30000);
 
     return () => {
-      console.log('🔥 Removendo listener em tempo real de conversas');
-      unsubscribe();
+      console.log('🔥 Removendo listener Supabase');
+      supabase.removeChannel(channel);
+      clearInterval(pollingInterval);
     };
   }, [user?.uid, currentUserId]);
 
@@ -194,10 +135,17 @@ export default function MensagensPage() {
     setFirstMessage('');
     setUsersLoading(true);
     try {
-      const res = await fetch('/api/usuarios', { cache: 'no-store' });
+      // Obter token de autenticação
+      const token = firebaseUser?.getIdToken ? await firebaseUser.getIdToken() : null;
+
+      // Usar endpoint específico para mensagens (não requer admin)
+      const res = await fetch('/api/mensagens/users', {
+        cache: 'no-store',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       const json = await res.json();
-      const list = (json.usuarios || []) as Array<{ id: string; displayName: string; email: string; active: boolean }>;
-      setUsers(list.filter(u => u.id !== currentUserId));
+      const list = (json.users || []) as Array<{ id: string; displayName: string; email: string; active: boolean; isOnline?: boolean; lastSeen?: string }>;
+      setUsers(list);
     } catch (e) {
       console.error('Erro ao listar usuários:', e);
       setUsers([]);
@@ -210,8 +158,16 @@ export default function MensagensPage() {
 
   const filteredUsers = useMemo(() => {
     const q = userSearch.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter(u => (u.displayName || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q));
+    let filtered = users;
+    if (q) {
+      filtered = users.filter(u => (u.displayName || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q));
+    }
+    // Ordenar: online primeiro, depois por nome
+    return filtered.sort((a, b) => {
+      if (a.isOnline && !b.isOnline) return -1;
+      if (!a.isOnline && b.isOnline) return 1;
+      return (a.displayName || '').localeCompare(b.displayName || '');
+    });
   }, [users, userSearch]);
 
   const createConversation = async () => {
@@ -474,7 +430,14 @@ export default function MensagensPage() {
                   <div className="p-2 bg-white/20 rounded-lg">
                     <UserPlus className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-white">Nova Conversa</h3>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Nova Conversa</h3>
+                    {!usersLoading && users.length > 0 && (
+                      <p className="text-sm text-white/70">
+                        {users.filter(u => u.isOnline).length} online de {users.length} usuários
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={closeNew}
@@ -528,11 +491,27 @@ export default function MensagensPage() {
                           onChange={() => setSelectedUserId(u.id)}
                           className="w-5 h-5 text-[#16476A] focus:ring-[#16476A]"
                         />
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#16476A] to-[#132440] flex items-center justify-center text-white font-bold shadow-md">
-                          {u.displayName.substring(0, 2).toUpperCase()}
+                        <div className="relative">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shadow-md ${
+                            u.isOnline
+                              ? 'bg-gradient-to-br from-[#3B9797] to-[#2c7a7a]'
+                              : 'bg-gradient-to-br from-[#16476A] to-[#132440]'
+                          }`}>
+                            {u.displayName.substring(0, 2).toUpperCase()}
+                          </div>
+                          <Circle className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 ${
+                            u.isOnline ? 'text-green-500 fill-green-500' : 'text-gray-400 fill-gray-400'
+                          } bg-white rounded-full ring-2 ring-white`} />
                         </div>
                         <div className="flex-1">
-                          <div className="font-bold text-[#212121]">{u.displayName}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-[#212121]">{u.displayName}</span>
+                            {u.isOnline && (
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
+                                Online
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs text-[#757575]">{u.email}</div>
                         </div>
                       </label>

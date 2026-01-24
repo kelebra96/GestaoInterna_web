@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { sendNotificationToUser } from '@/lib/notifications';
 
 type Status = 'pending' | 'batched' | 'closed';
 type Params = { params: Promise<{ id: string }> };
@@ -162,15 +163,19 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
     // Atualizar o status no banco de dados se necessário (em background)
     if (shouldUpdateStatus) {
-      supabaseAdmin
-        .from('solicitacoes')
-        .update({
-          status: 'batched',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id)
-        .then(() => {})
-        .catch((err: any) => console.error('Erro ao atualizar status da solicitação:', id, err));
+      (async () => {
+        try {
+          await supabaseAdmin
+            .from('solicitacoes')
+            .update({
+              status: 'batched',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', id);
+        } catch (err) {
+          console.error('Erro ao atualizar status da solicitação:', id, err);
+        }
+      })();
     }
 
     return NextResponse.json({
@@ -226,6 +231,27 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const createdAt = new Date(data.created_at || new Date());
     const userName = await getUserName(data.created_by);
     const storeName = await getStoreName(data.store_id);
+
+    // Enviar notificação se o status mudou
+    if (data.created_by && nextStatus) {
+      let title = 'Solicitação Atualizada';
+      let body = `O status da sua solicitação mudou para: ${nextStatus}`;
+
+      if (nextStatus === 'batched') {
+        title = 'Solicitação Aprovada';
+        body = 'Sua solicitação foi aprovada e processada.';
+      } else if (nextStatus === 'closed') {
+        title = 'Solicitação Finalizada';
+        body = 'Sua solicitação foi finalizada.';
+      }
+
+      // Enviar em background
+      sendNotificationToUser(data.created_by, title, body, {
+        type: 'solicitacao_updated',
+        solicitacaoId: id,
+        status: nextStatus
+      }).catch(err => console.error('Erro ao enviar notificação:', err));
+    }
 
     let items: number | undefined;
     try {

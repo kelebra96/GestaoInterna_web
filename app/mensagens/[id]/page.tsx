@@ -5,8 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Send, RefreshCw, User, Clock, MessageSquare, Paperclip, Check, CheckCheck, MoreVertical, Phone, Video, Info, Image, Smile, Circle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWebRTC } from '@/hooks/useWebRTC';
-import { db } from '@/lib/firebase-client';
-import { collection, query as firestoreQuery, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { supabase } from '@/lib/supabase-client';
+import DOMPurify from 'dompurify';
 
 interface Attachment {
   type: 'image' | 'file';
@@ -79,6 +79,7 @@ export default function ChatPage() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement>(null);
 
   // WebRTC Hook
   const otherUserId = conversation?.participants.find(p => p !== currentUserId) || '';
@@ -94,6 +95,14 @@ export default function ChatPage() {
     conversationId: conversationId || '',
     otherUserId,
   });
+
+  // Effect para conectar áudio remoto (chamadas de voz)
+  useEffect(() => {
+    if (remoteAudioRef.current && callState.remoteStream) {
+      console.log('🔊 Conectando stream de áudio remoto');
+      remoteAudioRef.current.srcObject = callState.remoteStream;
+    }
+  }, [callState.remoteStream]);
 
   const fetchData = async () => {
     if (!conversationId) return;
@@ -156,71 +165,63 @@ export default function ChatPage() {
     fetchData();
     markAsRead();
 
-    console.log('🔥 Configurando listener em tempo real para conversationId:', conversationId);
+    console.log('🔥 Configurando listener Supabase para conversationId:', conversationId);
 
-    const messagesRef = collection(db, 'messages');
-    const q = firestoreQuery(
-      messagesRef,
-      where('conversationId', '==', conversationId),
-      orderBy('createdAt', 'asc')
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        console.log('🔥 Snapshot recebido! Mudanças:', snapshot.docChanges().length);
-
-        const newMessages = snapshot.docs
-          .map((docSnap) => {
-            const data = docSnap.data();
-            const deletedBy = data.deletedBy || [];
-
-            if (deletedBy.includes(currentUserId) && !data.deletedForEveryone) {
-              return null;
-            }
-
-            return {
-              id: docSnap.id,
-              conversationId: data.conversationId || conversationId,
-              senderId: data.senderId || '',
-              senderName: data.senderName || 'Usuário',
-              receiverId: data.receiverId || '',
-              text: data.text || '',
-              createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-              read: data.read === true,
-              attachments: data.attachments || [],
-              deletedBy: deletedBy,
-              deletedForEveryone: data.deletedForEveryone === true,
-              deletedForEveryoneAt: data.deletedForEveryoneAt?.toDate?.()?.toISOString?.() || null,
+    const channel = supabase
+      .channel(`chat-${conversationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          console.log('🔥 Supabase Realtime Message:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            const newMsg = payload.new as any;
+            const formattedMsg: Message = {
+              id: newMsg.id,
+              conversationId: newMsg.conversation_id,
+              senderId: newMsg.sender_id,
+              senderName: newMsg.sender_name,
+              receiverId: newMsg.receiver_id,
+              text: newMsg.text,
+              createdAt: newMsg.created_at,
+              read: newMsg.read,
+              attachments: newMsg.attachments || [],
+              deletedBy: newMsg.deleted_for || [], // Mapeando deleted_for do banco para deletedBy
+              deletedForEveryone: newMsg.deleted_for_all,
+              deletedForEveryoneAt: newMsg.deleted_for_all_at
             };
-          })
-          .filter((msg) => msg !== null) as Message[];
+            
+            setMessages((prev) => {
+              // Evitar duplicatas
+              if (prev.find(m => m.id === formattedMsg.id)) return prev;
+              return [...prev, formattedMsg];
+            });
 
-        console.log('🔥 Mensagens atualizadas em tempo real:', newMessages.length);
-        setMessages(newMessages);
-        setLoading(false);
+            setTimeout(() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
 
-        setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
-
-        const hasUnread = newMessages.some(
-          (msg) => msg.receiverId === currentUserId && !msg.read
-        );
-        if (hasUnread) {
-          markAsRead();
+            if (formattedMsg.receiverId === currentUserId) {
+              markAsRead();
+            }
+          } else {
+            // Para UPDATE ou DELETE, recarregar tudo é mais seguro para garantir consistência
+            // (Ex: mensagem deletada para todos, editada, ou lida)
+            fetchData();
+          }
         }
-      },
-      (error) => {
-        console.error('❌ Erro no listener de mensagens:', error);
-        const interval = setInterval(fetchData, 5000);
-        return () => clearInterval(interval);
-      }
-    );
+      )
+      .subscribe();
 
     return () => {
-      console.log('🔥 Removendo listener em tempo real');
-      unsubscribe();
+      console.log('🔥 Removendo listener Supabase');
+      supabase.removeChannel(channel);
     };
   }, [conversationId, currentUserId]);
 
@@ -473,7 +474,7 @@ export default function ChatPage() {
   };
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval> | undefined;
     if (isInCall) {
       interval = setInterval(() => {
         setCallDuration(prev => prev + 1);
@@ -481,7 +482,9 @@ export default function ChatPage() {
     } else {
       setCallDuration(0);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [isInCall]);
 
   useEffect(() => {
@@ -497,14 +500,20 @@ export default function ChatPage() {
   }, [callState.remoteStream]);
 
   useEffect(() => {
-    if (callState.callStatus === 'connected' && !isInCall) {
+    if (callState.callStatus === 'ringing') {
+      if (callState.callType === 'video') {
+        setShowVideoCallModal(true);
+      } else {
+        setShowVoiceCallModal(true);
+      }
+    } else if (callState.callStatus === 'connected' && !isInCall) {
       setIsInCall(true);
-    } else if (callState.callStatus === 'idle' && isInCall) {
+    } else if (callState.callStatus === 'idle' && (isInCall || showVoiceCallModal || showVideoCallModal)) {
       setIsInCall(false);
       setShowVoiceCallModal(false);
       setShowVideoCallModal(false);
     }
-  }, [callState.callStatus, isInCall]);
+  }, [callState.callStatus, callState.callType, isInCall, showVoiceCallModal, showVideoCallModal]);
 
   const handleVoiceCall = async () => {
     const success = await startCall('voice');
@@ -770,7 +779,7 @@ export default function ChatPage() {
                 >
                   {msg.attachments && msg.attachments.length > 0 && (
                     <div className="mb-3 space-y-2">
-                      {msg.attachments.map((attachment, idx) => (
+                      {msg.attachments.filter(att => att && att.type).map((attachment, idx) => (
                         <div key={idx}>
                           {attachment.type === 'image' ? (
                             <a href={attachment.url} target="_blank" rel="noopener noreferrer">
@@ -802,7 +811,12 @@ export default function ChatPage() {
                       ))}
                     </div>
                   )}
-                  {msg.text && <p className="text-sm break-words text-[#212121] leading-relaxed">{msg.text}</p>}
+                  {msg.text && (
+                    <div 
+                      className="text-sm break-words text-[#212121] leading-relaxed [&>p]:mb-1 [&>ul]:list-disc [&>ul]:pl-4 [&>ol]:list-decimal [&>ol]:pl-4"
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(msg.text) }}
+                    />
+                  )}
                   <div className="text-xs mt-2 text-[#757575] flex items-center gap-2 justify-end font-medium">
                     <span className="inline-flex items-center gap-1">
                       <Clock className="w-3 h-3" />
@@ -1183,22 +1197,50 @@ export default function ChatPage() {
             </div>
 
             <div className="flex items-center justify-center gap-6">
-              <button
-                onClick={handleEndCall}
-                className="w-16 h-16 rounded-full bg-gradient-to-br from-[#E82129] to-[#C62828] hover:from-[#D32F2F] hover:to-[#B71C1C] text-white transition-all shadow-2xl hover:scale-110 flex items-center justify-center"
-                title="Encerrar chamada"
-              >
-                <Phone className="w-6 h-6 rotate-[135deg]" />
-              </button>
-              <button
-                onClick={toggleMute}
-                className="w-14 h-14 rounded-full bg-white/20 hover:bg-white/30 text-white transition-all backdrop-blur-sm flex items-center justify-center"
-                title="Silenciar microfone"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-              </button>
+              {callState.callStatus === 'ringing' ? (
+                <>
+                  <button
+                    onClick={handleEndCall}
+                    className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 text-white transition-all shadow-2xl hover:scale-110 flex items-center justify-center"
+                    title="Recusar"
+                  >
+                    <Phone className="w-8 h-8 rotate-[135deg]" />
+                  </button>
+                  <button
+                    onClick={() => acceptCall()}
+                    className="w-16 h-16 rounded-full bg-green-500 hover:bg-green-600 text-white transition-all shadow-2xl hover:scale-110 flex items-center justify-center animate-pulse"
+                    title="Atender"
+                  >
+                    <Phone className="w-8 h-8" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={handleEndCall}
+                    className="w-16 h-16 rounded-full bg-gradient-to-br from-[#E82129] to-[#C62828] hover:from-[#D32F2F] hover:to-[#B71C1C] text-white transition-all shadow-2xl hover:scale-110 flex items-center justify-center"
+                    title="Encerrar chamada"
+                  >
+                    <Phone className="w-6 h-6 rotate-[135deg]" />
+                  </button>
+                  <button
+                    onClick={toggleMute}
+                    className="w-14 h-14 rounded-full bg-white/20 hover:bg-white/30 text-white transition-all backdrop-blur-sm flex items-center justify-center"
+                    title="Silenciar microfone"
+                  >
+                    {callState.isMuted ? (
+                      <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
+                    )}
+                  </button>
+                </>
+              )}
             </div>
 
             {callState.callStatus === 'connected' && (
@@ -1258,29 +1300,57 @@ export default function ChatPage() {
             </div>
 
             <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-4">
-              <button
-                onClick={toggleMute}
-                className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md flex items-center justify-center"
-                title="Silenciar microfone"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-              </button>
-              <button
-                onClick={handleEndCall}
-                className="w-16 h-16 rounded-full bg-gradient-to-br from-[#E82129] to-[#C62828] hover:from-[#D32F2F] hover:to-[#B71C1C] text-white transition-all shadow-2xl hover:scale-110 flex items-center justify-center"
-                title="Encerrar chamada"
-              >
-                <Phone className="w-6 h-6 rotate-[135deg]" />
-              </button>
-              <button
-                onClick={toggleVideo}
-                className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md flex items-center justify-center"
-                title="Desligar câmera"
-              >
-                <Video className="w-5 h-5" />
-              </button>
+              {callState.callStatus === 'ringing' ? (
+                <>
+                  <button
+                    onClick={handleEndCall}
+                    className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 text-white transition-all shadow-2xl hover:scale-110 flex items-center justify-center"
+                    title="Recusar"
+                  >
+                    <Phone className="w-8 h-8 rotate-[135deg]" />
+                  </button>
+                  <button
+                    onClick={() => acceptCall()}
+                    className="w-16 h-16 rounded-full bg-green-500 hover:bg-green-600 text-white transition-all shadow-2xl hover:scale-110 flex items-center justify-center animate-pulse"
+                    title="Atender"
+                  >
+                    <Video className="w-8 h-8" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={toggleMute}
+                    className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md flex items-center justify-center"
+                    title="Silenciar microfone"
+                  >
+                    {callState.isMuted ? (
+                      <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
+                    )}
+                  </button>
+                  <button
+                    onClick={handleEndCall}
+                    className="w-16 h-16 rounded-full bg-gradient-to-br from-[#E82129] to-[#C62828] hover:from-[#D32F2F] hover:to-[#B71C1C] text-white transition-all shadow-2xl hover:scale-110 flex items-center justify-center"
+                    title="Encerrar chamada"
+                  >
+                    <Phone className="w-6 h-6 rotate-[135deg]" />
+                  </button>
+                  <button
+                    onClick={toggleVideo}
+                    className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all backdrop-blur-md flex items-center justify-center"
+                    title="Desligar câmera"
+                  >
+                    <Video className="w-5 h-5" />
+                  </button>
+                </>
+              )}
             </div>
 
             {callState.callStatus === 'connected' && (
@@ -1292,6 +1362,9 @@ export default function ChatPage() {
           </div>
         </div>
       )}
+
+      {/* Elemento de áudio oculto para chamadas de voz */}
+      <audio ref={remoteAudioRef} autoPlay style={{ display: 'none' }} />
     </div>
   );
 }

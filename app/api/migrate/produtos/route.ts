@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { db as firestoreDb } from '@/lib/firebase-admin';
 import { getAuthFromRequest } from '@/lib/helpers/auth';
 import { Role } from '@prisma/client';
+import type { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
     const toUpdate: any[] = [];
     let skipped = 0;
 
-    produtosSnapshot.docs.forEach((doc) => {
+    produtosSnapshot.docs.forEach((doc: QueryDocumentSnapshot) => {
       const data = doc.data() || {};
       const ean = cleanText(data.ean) || cleanText(doc.id);
       const sku = cleanText(data.sku);

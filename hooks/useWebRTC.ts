@@ -38,6 +38,7 @@ export const useWebRTC = ({ userId, conversationId, otherUserId }: UseWebRTCProp
   const peerRef = useRef<SimplePeer.Instance | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteSocketIdRef = useRef<string | null>(null);
+  const incomingOfferRef = useRef<SimplePeer.SignalData | null>(null);
 
   const endCallCleanup = useCallback(() => {
     if (peerRef.current) {
@@ -57,10 +58,12 @@ export const useWebRTC = ({ userId, conversationId, otherUserId }: UseWebRTCProp
       isVideoEnabled: true,
     });
     remoteSocketIdRef.current = null;
+    incomingOfferRef.current = null;
   }, []);
 
   useEffect(() => {
-    const socket = io('http://localhost:3002', {
+    const signalingUrl = process.env.NEXT_PUBLIC_SIGNALING_SERVER_URL || 'http://localhost:3002';
+    const socket = io(signalingUrl, {
       transports: ['websocket'],
       reconnection: true,
     });
@@ -81,10 +84,8 @@ export const useWebRTC = ({ userId, conversationId, otherUserId }: UseWebRTCProp
     socket.on('incoming-call', ({ from, offer, callType }) => {
       console.log('Incoming call from', from);
       remoteSocketIdRef.current = from;
+      incomingOfferRef.current = offer;
       setCallState(prev => ({ ...prev, callStatus: 'ringing', callType }));
-      // Em uma aplicação real, você mostraria um modal para aceitar/rejeitar
-      // Por simplicidade, vamos auto-aceitar para testar
-      acceptCall(callType, offer);
     });
 
     // A outra parte atendeu
@@ -166,22 +167,30 @@ export const useWebRTC = ({ userId, conversationId, otherUserId }: UseWebRTCProp
     }
   }, [otherUserId]);
 
-  const acceptCall = useCallback(async (type: 'voice' | 'video', offer: SimplePeer.SignalData) => {
+  const acceptCall = useCallback(async (type?: 'voice' | 'video', offer?: SimplePeer.SignalData) => {
+    const callTypeToUse = type || callState.callType || 'voice';
+    const offerToUse = offer || incomingOfferRef.current;
+
+    if (!offerToUse) {
+      console.error('Nenhuma oferta para aceitar');
+      return false;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: type === 'video',
+        video: callTypeToUse === 'video',
         audio: true,
       });
       localStreamRef.current = stream;
-      setCallState(prev => ({ ...prev, localStream: stream, callStatus: 'connected', callType: type }));
+      setCallState(prev => ({ ...prev, localStream: stream, callStatus: 'connected', callType: callTypeToUse }));
       const peer = createPeer(stream, false);
-      peer.signal(offer);
+      peer.signal(offerToUse);
       return true;
     } catch (error) {
       console.error('Erro ao aceitar chamada:', error);
       return false;
     }
-  }, []);
+  }, [callState.callType]);
 
   const endCall = useCallback(() => {
     socketRef.current?.emit('end-call', { to: remoteSocketIdRef.current });

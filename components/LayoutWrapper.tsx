@@ -17,6 +17,17 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detectar se é mobile (< 1024px)
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Detectar iOS e modo standalone
   useEffect(() => {
@@ -260,8 +271,9 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
           onMobileClose={() => setMobileMenuOpen(false)}
         />
 
-        {/* Mobile Header com menu hamburguer */}
-        <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-gradient-to-r from-[#1F53A2] via-[#2E67C3] to-[#5C94CC] border-b-2 border-white/20 z-30 flex items-center justify-between px-4 shadow-xl">
+        {/* Mobile Header com menu hamburguer - só aparece em telas < 1024px */}
+        {isMobile && (
+        <div className="fixed top-0 left-0 right-0 h-16 bg-gradient-to-r from-[#1F53A2] via-[#2E67C3] to-[#5C94CC] border-b-2 border-white/20 z-30 flex items-center justify-between px-4 shadow-xl">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(true)}
@@ -306,9 +318,10 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
             )}
           </button>
         </div>
+        )}
 
         {/* Main content com padding responsivo */}
-        <main className="lg:pl-72 min-h-screen pt-16 lg:pt-0">
+        <main style={{ paddingLeft: isMobile ? '0' : '288px', paddingTop: isMobile ? '64px' : '0' }} className="min-h-screen">
           <RoleGuard>{children}</RoleGuard>
         </main>
       </>

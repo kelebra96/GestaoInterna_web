@@ -78,7 +78,7 @@ export function ARScene({ onSessionStart }: ARSceneProps) {
   // Hit testing - atualiza posição do retículo a cada frame
   useFrame((_, delta) => {
     const session = gl.xr.getSession();
-    const xrCamera = gl.xr.getCamera(camera);
+    const xrCamera = gl.xr.getCamera();
 
     if (session && hitTestSource && reticleRef.current) {
       // @ts-ignore
@@ -138,12 +138,10 @@ function MeasurementLines({ points }: { points: any[] }) {
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
-            count={2}
-            array={new Float32Array([
+            args={[new Float32Array([
               positions[0].x, positions[0].y, positions[0].z,
               positions[1].x, positions[1].y, positions[1].z,
-            ])}
-            itemSize={3}
+            ]), 3]}
           />
         </bufferGeometry>
         <lineBasicMaterial color="#00ff00" linewidth={2} />
@@ -187,12 +185,10 @@ function MeasurementLines({ points }: { points: any[] }) {
             <bufferGeometry>
               <bufferAttribute
                 attach="attributes-position"
-                count={2}
-                array={new Float32Array([
+                args={[new Float32Array([
                   point.position.x, point.position.y, point.position.z,
                   nextPoint.position.x, nextPoint.position.y, nextPoint.position.z,
-                ])}
-                itemSize={3}
+                ]), 3]}
               />
             </bufferGeometry>
             <lineBasicMaterial color="#00ff00" linewidth={2} />

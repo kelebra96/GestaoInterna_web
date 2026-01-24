@@ -23,9 +23,9 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabaseAdmin
     .from('users')
-    .select('*')
+    .select('id, display_name, email, role, store_id, company_id, active, created_at, updated_at')
     .eq('id', auth.userId)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });

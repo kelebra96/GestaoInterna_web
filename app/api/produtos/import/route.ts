@@ -33,17 +33,16 @@ export async function POST(req: NextRequest) {
     for (let i = 0; i < productsToInsert.length; i += BATCH_SIZE) {
       const batch = productsToInsert.slice(i, i + BATCH_SIZE);
 
-      const { error: insertError, count } = await supabaseAdmin
+      const { error: insertError } = await supabaseAdmin
         .from('produtos')
-        .insert(batch)
-        .select('id', { count: 'exact', head: true });
+        .insert(batch);
 
       if (insertError) {
         console.error('[Produtos Import] Erro ao inserir lote:', insertError);
         throw insertError;
       }
 
-      totalInserted += (count || batch.length);
+      totalInserted += batch.length;
     }
 
     console.log(`[Produtos Import] ${totalInserted} produtos importados com sucesso`);

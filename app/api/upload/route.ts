@@ -14,8 +14,8 @@ async function getConfig() {
 export async function POST(request: Request) {
   try {
     const config = await getConfig();
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
+    const formData = await request.formData() as unknown as globalThis.FormData;
+    const file = formData.get('file') as File | null;
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -45,7 +45,16 @@ export async function POST(request: Request) {
         .from('uploads')
         .getPublicUrl(fileName);
 
-      return NextResponse.json({ url: publicUrl, path: data.path });
+      const isImage = file.type.startsWith('image/');
+      const attachment = {
+        type: isImage ? 'image' : 'file',
+        url: publicUrl,
+        name: file.name,
+        size: file.size,
+        mimeType: file.type
+      };
+
+      return NextResponse.json({ success: true, attachment });
     } else {
       // --- Local Upload (fallback) ---
       const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
@@ -55,7 +64,17 @@ export async function POST(request: Request) {
 
       // Return a URL that can be used to access the file locally
       const localUrl = `/uploads/${fileName}`;
-      return NextResponse.json({ url: localUrl, path: localPath });
+      
+      const isImage = file.type.startsWith('image/');
+      const attachment = {
+        type: isImage ? 'image' : 'file',
+        url: localUrl,
+        name: file.name,
+        size: file.size,
+        mimeType: file.type
+      };
+
+      return NextResponse.json({ success: true, attachment });
     }
   } catch (error) {
     console.error('Upload failed:', error);

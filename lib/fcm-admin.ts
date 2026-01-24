@@ -212,4 +212,5 @@ export async function validateFCMToken(token: string): Promise<boolean> {
   }
 }
 
-export default admin.messaging();
+// Exportar messaging apenas se inicializado
+export default admin.apps.length ? admin.messaging() : null;

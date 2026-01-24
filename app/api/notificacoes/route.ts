@@ -44,9 +44,18 @@ export async function GET(req: NextRequest) {
       .order('sent_at', { ascending: false })
       .limit(100);
 
+    // Se a tabela não existir ou houver erro, retorna lista vazia
     if (notificationsError) {
       console.error('[Notificações] Erro ao listar notificações:', notificationsError);
-      throw notificationsError;
+
+      // Se for erro de tabela não existente, retorna lista vazia
+      if (notificationsError.code === '42P01' || notificationsError.message?.includes('does not exist')) {
+        console.warn('[Notificações] Tabela notifications não existe ainda');
+        return NextResponse.json({ notifications: [] });
+      }
+
+      // Para outros erros, também retorna lista vazia para não quebrar a UI
+      return NextResponse.json({ notifications: [] });
     }
 
     const notifications = (notificationsData || []).map((data: any) => {
@@ -79,9 +88,10 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ notifications });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao listar notificações:', error);
-    return NextResponse.json({ error: 'Falha ao listar notificações' }, { status: 500 });
+    // Retorna lista vazia em vez de erro para não quebrar a UI
+    return NextResponse.json({ notifications: [] });
   }
 }
 

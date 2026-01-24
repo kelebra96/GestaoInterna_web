@@ -40,7 +40,7 @@ export default function RolesBarChart({ roles }: RolesBarChartProps) {
           <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#757575' }} stroke="#BFC7C9" />
           <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#757575' }} stroke="#BFC7C9" />
           <Tooltip
-            formatter={(value: number) => [value, 'Usuários']}
+            formatter={(value: any) => [value, 'Usuários']}
             contentStyle={{
               backgroundColor: '#FFFFFF',
               border: '1px solid #E0E0E0',

@@ -3,15 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "next dev -p 3000 --turbopack",
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "eslint",
     "signaling": "node server-signaling.js",
     "tunnel": "npx ngrok http 3000",
     "test:ar": "echo '\n🚀 Passo 1: Inicie o servidor com npm run dev em outro terminal\n🌐 Passo 2: Execute npm run tunnel\n📱 Passo 3: Acesse a URL HTTPS gerada + /ar-measurement no iPhone Safari\n'",
-    "fcm-worker": "tsx workers/fcm-worker.ts",
-    "fcm-worker:dev": "tsx watch workers/fcm-worker.ts"
+    "fcm-worker": "dotenv -e .env.local -- tsx workers/fcm-worker.ts",
+    "fcm-worker:dev": "dotenv -e .env.local -- tsx watch workers/fcm-worker.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -22,6 +22,7 @@
     "@react-three/fiber": "^9.4.2",
     "@sentry/nextjs": "^8.40.0",
     "@supabase/supabase-js": "^2.89.0",
+    "@types/dompurify": "^3.0.5",
     "@types/mongodb": "^4.0.6",
     "@types/three": "^0.182.0",
     "@types/uuid": "^10.0.0",
@@ -30,6 +31,7 @@
     "csv-parse": "^6.1.0",
     "date-fns": "^4.1.0",
     "diff": "^5.2.0",
+    "dompurify": "^3.3.1",
     "dotenv-cli": "^11.0.0",
     "express": "^5.1.0",
     "firebase": "^12.6.0",
@@ -42,6 +44,7 @@
     "lucide-react": "^0.552.0",
     "mongodb": "^7.0.0",
     "next": "15.0.1",
+    "openai": "^6.16.0",
     "papaparse": "^5.5.3",
     "pg": "^8.16.3",
     "prisma": "^6.19.0",

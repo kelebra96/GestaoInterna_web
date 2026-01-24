@@ -526,7 +526,7 @@ export default function EnderecosPage() {
         }
 
         // Código em texto
-        const addressCode = address.addressCode || address.address_code || '';
+        const addressCode = address.addressCode || (address as any).address_code || '';
         doc.setTextColor(33, 33, 33);
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');

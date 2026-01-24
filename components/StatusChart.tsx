@@ -53,7 +53,7 @@ export default function StatusChart({ data }: StatusChartProps) {
               ))}
             </Pie>
             <Tooltip
-              formatter={(value: number, name: string, props: any) => {
+              formatter={(value: any, name: any, props: any) => {
                 const pct = props && props.payload ? props.payload.percent : 0;
                 return [`${value} (${pct.toFixed(0)}%)`, name];
               }}

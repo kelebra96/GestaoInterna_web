@@ -76,24 +76,17 @@ export async function GET(request: Request) {
 
     // Update overdue tasks
     const now = new Date();
-    const overdueUpdates: Promise<any>[] = [];
-    tasks.forEach((task: any) => {
+    for (const task of tasks) {
       if (task.status === 'pending' && task.dueDate && new Date(task.dueDate) < now) {
-        overdueUpdates.push(
-          supabaseAdmin
-            .from('compliance_tasks')
-            .update({
-              status: 'overdue',
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', task.id)
-        );
+        await supabaseAdmin
+          .from('compliance_tasks')
+          .update({
+            status: 'overdue',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', task.id);
         task.status = 'overdue';
       }
-    });
-
-    if (overdueUpdates.length > 0) {
-      await Promise.all(overdueUpdates);
     }
 
     return NextResponse.json({ tasks });

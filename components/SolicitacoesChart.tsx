@@ -73,8 +73,8 @@ export default function SolicitacoesChart({ data }: SolicitacoesChartProps) {
           <YAxis tick={{ fontSize: 12, fill: '#757575' }} stroke="#BFC7C9" />
           <Tooltip
             labelFormatter={(value) => `Data: ${value}`}
-            formatter={(value: number, name: string) => {
-              if (name.toLowerCase().includes('média')) return [`${value.toFixed(1)}`, 'Média móvel'];
+            formatter={(value: any, name: any) => {
+              if (String(name).toLowerCase().includes('média')) return [`${value.toFixed(1)}`, 'Média móvel'];
               return [`${value} solicitações`, 'Total'];
             }}
             contentStyle={{

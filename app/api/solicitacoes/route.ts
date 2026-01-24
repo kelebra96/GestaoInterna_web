@@ -166,15 +166,19 @@ export async function GET(request: Request) {
 
       // Atualizar o status no banco de dados se necessário (em background, não bloqueia a resposta)
       if (shouldUpdateStatus) {
-        supabaseAdmin
-          .from('solicitacoes')
-          .update({
-            status: 'batched',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', data.id)
-          .then(() => {})
-          .catch((err: any) => console.error('Erro ao atualizar status da solicitação:', data.id, err));
+        (async () => {
+          try {
+            await supabaseAdmin
+              .from('solicitacoes')
+              .update({
+                status: 'batched',
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', data.id);
+          } catch (err) {
+            console.error('Erro ao atualizar status da solicitação:', data.id, err);
+          }
+        })();
       }
 
       solicitacoes.push({

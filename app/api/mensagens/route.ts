@@ -27,7 +27,19 @@ export async function GET(req: NextRequest) {
 
     const { data: conversationsData, error: conversationsError } = await query;
 
-    if (conversationsError) throw conversationsError;
+    // Se a tabela não existir ou houver erro, retorna lista vazia
+    if (conversationsError) {
+      console.error('[Mensagens] Erro ao listar conversas:', conversationsError);
+
+      // Se for erro de tabela não existente, retorna lista vazia
+      if (conversationsError.code === '42P01' || conversationsError.message?.includes('does not exist')) {
+        console.warn('[Mensagens] Tabela conversations não existe ainda');
+        return NextResponse.json({ conversations: [], onlineStatus: {} });
+      }
+
+      // Para outros erros, também retorna lista vazia para não quebrar a UI
+      return NextResponse.json({ conversations: [], onlineStatus: {} });
+    }
 
     // Buscar status online dos participantes
     const allParticipantIds = new Set<string>();
@@ -74,9 +86,10 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ conversations });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao listar conversas:', error);
-    return NextResponse.json({ error: 'Falha ao listar conversas' }, { status: 500 });
+    // Retorna lista vazia em vez de erro para não quebrar a UI
+    return NextResponse.json({ conversations: [], onlineStatus: {} });
   }
 }
 
@@ -106,7 +119,7 @@ export async function POST(request: Request) {
     const { data: existingConversations, error: searchError } = await supabaseAdmin
       .from('conversations')
       .select('*')
-      .eq('participants', participants)
+      .contains('participants', participants)
       .limit(1);
 
     if (searchError) throw searchError;
@@ -120,14 +133,14 @@ export async function POST(request: Request) {
       // Criar nova conversa - buscar nomes dos usuários
       const { data: users, error: usersError } = await supabaseAdmin
         .from('users')
-        .select('id, name')
+        .select('id, display_name')
         .in('id', participants);
 
       if (usersError) throw usersError;
 
       const participantNames: Record<string, string> = {};
       users?.forEach((user: any) => {
-        participantNames[user.id] = user.name || 'Usuário';
+        participantNames[user.id] = user.display_name || 'Usuário';
       });
 
       const messagePreview = (text && text.trim().length > 0)

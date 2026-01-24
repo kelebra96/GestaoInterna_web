@@ -28,7 +28,7 @@ export function ARMeasurement() {
         try {
           // @ts-ignore - WebXR types ainda não são totalmente suportados
           const supported = await navigator.xr?.isSessionSupported('immersive-ar');
-          setARSupported(supported);
+          setARSupported(supported ?? false);
 
           if (!supported) {
             setError('Seu dispositivo não suporta WebXR AR. Use um dispositivo compatível (iPhone com iOS 15+).');
@@ -185,7 +185,7 @@ export function ARMeasurement() {
         gl={{
           xr: {
             enabled: true,
-          },
+          } as any,
         }}
         className="w-full h-full"
       >

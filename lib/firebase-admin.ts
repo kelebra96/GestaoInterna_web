@@ -96,6 +96,7 @@ if (isFirebaseInitialized) {
 
 export const db = firestoreInstance as any;
 export const auth = isFirebaseInitialized ? admin.auth() : null as any;
+export const messaging = isFirebaseInitialized ? admin.messaging() : null as any;
 export const storage = isFirebaseInitialized ? admin.storage() : null as any;
 export const adminStorage = isFirebaseInitialized ? admin.storage : null as any;
 export const FieldValue = admin.firestore.FieldValue;

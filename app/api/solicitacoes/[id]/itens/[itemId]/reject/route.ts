@@ -85,7 +85,7 @@ export async function POST(
 
     const descricao = itemData.descricao || 'Item';
 
-    // 4. Enviar notificação FCM via queue para o usuário que criou a solicitação
+    // 4. Enviar notificação FCM via queue e salvar no histórico para o usuário que criou a solicitação
     if (createdBy) {
       try {
         // Buscar usuário para pegar o fcmToken
@@ -95,28 +95,32 @@ export async function POST(
           .eq('id', createdBy)
           .single();
 
-        if (!userError && userData && userData.fcm_token) {
-          // Buscar nome da loja
-          let storeName = storeId;
-          if (storeId) {
-            const { data: storeData } = await supabaseAdmin
-              .from('stores')
-              .select('name')
-              .eq('id', storeId)
-              .single();
+        // Buscar nome da loja (necessário para ambas as notificações)
+        let storeName = storeId;
+        if (storeId) {
+          const { data: storeData } = await supabaseAdmin
+            .from('stores')
+            .select('name')
+            .eq('id', storeId)
+            .single();
 
-            if (storeData) {
-              storeName = storeData.name || storeId;
-            }
+          if (storeData) {
+            storeName = storeData.name || storeId;
           }
+        }
 
-          // Inserir na fila FCM (o worker enviará a notificação)
+        const notificationTitle = '❌ Item Rejeitado';
+        const notificationBody = `O item "${descricao}" da ${storeName} foi rejeitado. Motivo: ${motivoRejeicao}`;
+        const notificationMessage = `O item "${descricao}" foi rejeitado. Motivo: ${motivoRejeicao}`;
+
+        // Inserir na fila FCM (o worker enviará a notificação push) - APENAS SE HOUVER FCM TOKEN
+        if (!userError && userData && userData.fcm_token) {
           await supabaseAdmin.from('fcm_queue').insert({
             user_id: createdBy,
             fcm_token: userData.fcm_token,
             notification_type: 'item_rejected',
-            title: '❌ Item Rejeitado',
-            body: `O item "${descricao}" da ${storeName} foi rejeitado. Motivo: ${motivoRejeicao}`,
+            title: notificationTitle,
+            body: notificationBody,
             data: {
               type: 'item_rejected',
               solicitacaoId: id,
@@ -127,15 +131,36 @@ export async function POST(
             status: 'pending',
             created_at: new Date().toISOString(),
           });
-
           console.log('✅ Notificação FCM adicionada à fila');
         } else {
-          console.log('⚠️ Usuário não tem FCM token registrado');
+          console.log('⚠️ Usuário não tem FCM token registrado ou não encontrado para notificação FCM');
         }
+
+        // Inserir na tabela notifications (para histórico no app) - SEMPRE QUE HOUVER createdBy
+        await supabaseAdmin.from('notifications').insert({
+          user_id: createdBy,
+          title: notificationTitle,
+          message: notificationMessage,
+          type: 'item_rejected',
+          read: false,
+          data: {
+            solicitacaoId: id,
+            itemId: itemId,
+            storeId: storeId,
+            motivoRejeicao: motivoRejeicao,
+          },
+          link: `/solicitacoes/${id}`,
+          created_at: new Date().toISOString(),
+        });
+
+        console.log('✅ Notificação salva no histórico');
+
       } catch (notifError) {
         // Não bloquear a rejeição se a notificação falhar
-        console.error('Erro ao adicionar notificação à fila:', notifError);
+        console.error('Erro ao adicionar notificação à fila ou histórico:', notifError);
       }
+    } else {
+      console.log('⚠️ createdBy não encontrado para notificação');
     }
 
     // 5. Retornar item atualizado
