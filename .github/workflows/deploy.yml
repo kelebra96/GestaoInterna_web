@@ -1,0 +1,60 @@
+ on:
+    push:
+      branches:
+        - main  # ou master
+
+  jobs:
+    deploy:
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Setup Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: '20'
+            cache: 'npm'
+            cache-dependency-path: web/package-lock.json
+
+        - name: Install dependencies
+          working-directory: ./web
+          run: npm ci
+
+        - name: Build application
+          working-directory: ./web
+          env:
+            NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL
+  }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{
+  secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          run: npm run build
+
+        - name: Deploy to VPS
+          uses: easingthemes/ssh-deploy@v5
+          with:
+            SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
+            REMOTE_HOST: ${{ secrets.VPS_HOST }}
+            REMOTE_USER: ${{ secrets.VPS_USER }}
+            REMOTE_PORT: ${{ secrets.VPS_PORT }}
+            SOURCE: "web/"
+            TARGET: "/var/www/myinventory"
+            EXCLUDE: "node_modules/, .git/, .env*"
+
+        - name: Restart application
+          uses: appleboy/ssh-action@v1
+          with:
+            host: ${{ secrets.VPS_HOST }}
+            username: ${{ secrets.VPS_USER }}
+            key: ${{ secrets.VPS_SSH_KEY }}
+            port: ${{ secrets.VPS_PORT }}
+            script: |
+              cd /var/www/myinventory
+              npm ci --production
+              pm2 restart myinventory || pm2 start npm --name "myinventory"
+  -i 2 -- start
+              pm2 save
+
+  ---
+  4. Configuração Inicial na VPS
