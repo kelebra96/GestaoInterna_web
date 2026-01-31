@@ -871,7 +871,7 @@ export default function Home() {
                   />
                   <Tooltip
                     content={({ active, payload, label }) => {
-                      if (active && payload && payload.length) {
+                      if (active && payload && payload.length && label) {
                         const item = payload[0].payload;
                         return (
                           <div className="bg-white p-3 rounded-lg shadow-xl border border-gray-200">
@@ -963,7 +963,7 @@ export default function Home() {
                     outerRadius={90}
                     paddingAngle={3}
                     dataKey="value"
-                    label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                    label={({ percent }) => `${((percent ?? 0) * 100).toFixed(0)}%`}
                     labelLine={false}
                   >
                     {[

@@ -592,7 +592,7 @@ export default function RelatoriosPage() {
                         outerRadius={100}
                         paddingAngle={5}
                         dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                         labelLine={false}
                       >
                         {analytics.statusPieData.map((entry, index) => (
@@ -1595,7 +1595,7 @@ export default function RelatoriosPage() {
                     />
                     <Tooltip
                       content={({ active, payload, label }) => {
-                        if (active && payload && payload.length) {
+                        if (active && payload && payload.length && label) {
                           const item = payload[0].payload;
                           return (
                             <div className="bg-white p-3 rounded-lg shadow-lg border border-[#E0E0E0]">
