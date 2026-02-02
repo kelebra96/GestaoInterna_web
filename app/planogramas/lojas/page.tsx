@@ -9,6 +9,7 @@ import {
   Store,
   Eye,
   Calendar,
+  Trash2,
 } from 'lucide-react';
 import { PlanogramStore, PlanogramStatus } from '@prisma/client'; // Use Prisma types
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,6 +36,7 @@ export default function PlanogramStoresPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<PlanogramStatus | 'all'>('all');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchPlanograms = async () => {
     try {
@@ -79,6 +81,39 @@ export default function PlanogramStoresPage() {
       fetchPlanograms();
     }
   }, [statusFilter, firebaseUser]);
+
+  const handleDeletePlanogram = async (planogramId: string) => {
+    if (!firebaseUser) {
+      alert('Usuário não autenticado');
+      return;
+    }
+    if (!confirm('Tem certeza que deseja excluir este planograma?')) {
+      return;
+    }
+
+    try {
+      setDeletingId(planogramId);
+      const token = await firebaseUser.getIdToken();
+      const response = await fetch(`/api/planograms/store/${planogramId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok && response.status !== 204) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Falha ao excluir planograma');
+      }
+
+      setPlanograms((current) => current.filter((p) => p.id !== planogramId));
+    } catch (e: any) {
+      console.error(e);
+      alert(e?.message || 'Erro ao excluir planograma');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const filteredPlanograms = planograms.filter((planogram) => {
     const matchesSearch =
@@ -321,6 +356,15 @@ export default function PlanogramStoresPage() {
                         >
                           <Eye className="w-5 h-5" />
                           Ver Detalhes
+                        </button>
+
+                        <button
+                          onClick={() => handleDeletePlanogram(planogram.id)}
+                          disabled={deletingId === planogram.id}
+                          className="mt-3 w-full inline-flex items-center justify-center gap-2 bg-white border-2 border-[#E0E0E0] text-[#BF092F] hover:bg-[#FCECEF] hover:border-[#BF092F] px-4 py-3 rounded-xl text-sm font-bold shadow-sm transition-all duration-300 disabled:opacity-50"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                          {deletingId === planogram.id ? 'Excluindo...' : 'Excluir'}
                         </button>
                       </div>
                     ))}

@@ -74,6 +74,7 @@ interface SidebarProps {
   onToggle?: () => void;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
+  isMobile?: boolean;
 }
 
 // ============================================================================
@@ -84,7 +85,8 @@ export default function Sidebar({
   collapsed = false,
   onToggle,
   mobileOpen = false,
-  onMobileClose
+  onMobileClose,
+  isMobile = false
 }: SidebarProps) {
   const pathname = usePathname();
   const { user, firebaseUser, signOut } = useAuth();
@@ -184,7 +186,14 @@ export default function Sidebar({
       {/* Sidebar */}
       <aside
         style={{ width: collapsed ? '80px' : '288px' }}
-        className={`bg-gradient-to-b from-[#16476A] via-[#3B9797] to-[#132440] text-white flex flex-col transition-all duration-300 ease-in-out fixed left-0 top-0 h-screen z-50 shadow-2xl ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+        aria-hidden={isMobile && !mobileOpen}
+        className={`bg-gradient-to-b from-[#16476A] via-[#3B9797] to-[#132440] text-white flex flex-col transition-all duration-300 ease-in-out fixed left-0 top-0 h-screen z-50 shadow-2xl ${
+          isMobile
+            ? (mobileOpen
+              ? 'translate-x-0 opacity-100 pointer-events-auto'
+              : '-translate-x-full opacity-0 pointer-events-none')
+            : 'translate-x-0 opacity-100 pointer-events-auto'
+        }`}
       >
         {/* ================================================================ */}
         {/* HEADER */}

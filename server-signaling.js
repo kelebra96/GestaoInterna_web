@@ -23,11 +23,37 @@ const users = new Map(); // socketId -> { userId, conversationId }
 const userIdToSocketId = new Map(); // userId -> socketId
 const conversations = new Map(); // conversationId -> Set<socketId>
 
+// Healthcheck
+app.get('/health', (_req, res) => {
+  const usersOnline = userIdToSocketId.size;
+  const usersOnlineList = Array.from(userIdToSocketId.keys());
+  res.json({
+    status: 'ok',
+    usersOnline,
+    users: usersOnlineList,
+  });
+});
+
 io.on('connection', (socket) => {
   console.log('🔌 Cliente conectado:', socket.id);
 
   // Registrar usuário
-  socket.on('register', ({ userId, conversationId }) => {
+  socket.on('register', (payload) => {
+    let userId = null;
+    let conversationId = 'global';
+
+    if (typeof payload === 'string') {
+      userId = payload;
+    } else {
+      userId = payload?.userId;
+      conversationId = payload?.conversationId || 'global';
+    }
+
+    if (!userId) {
+      console.log('⚠️ Registro inválido: userId ausente');
+      return;
+    }
+
     console.log(`👤 Usuário registrado: ${userId} na conversa ${conversationId}`);
 
     users.set(socket.id, { userId, conversationId });
@@ -129,4 +155,5 @@ io.on('connection', (socket) => {
 const PORT = process.env.SOCKET_PORT || 3002;
 server.listen(PORT, () => {
   console.log(`🚀 Servidor de sinalização WebRTC rodando na porta ${PORT}`);
+  console.log(`📡 Listening on all interfaces (0.0.0.0:${PORT})`);
 });

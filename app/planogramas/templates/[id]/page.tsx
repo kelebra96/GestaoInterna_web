@@ -245,8 +245,22 @@ export default function PlanogramTemplateDetailPage() {
           if (response.ok) {
             successCount++;
           } else {
-            const errorData = await response.json();
-            console.error(`Erro ao gerar para loja ${storeId}:`, errorData);
+            let errorData: any = null;
+            try {
+              errorData = await response.json();
+            } catch {
+              try {
+                const text = await response.text();
+                errorData = text ? { error: text } : null;
+              } catch {
+                errorData = null;
+              }
+            }
+            console.error(`Erro ao gerar para loja ${storeId}:`, {
+              status: response.status,
+              statusText: response.statusText,
+              body: errorData,
+            });
             errorCount++;
           }
         } catch (error) {

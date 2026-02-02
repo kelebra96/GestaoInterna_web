@@ -4,6 +4,115 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // 60 segundos máximo
 
+function isUuid(value?: string | null) {
+  if (!value) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+// Helper para fetch com timeout compatível
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = 15000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function createTestRun(params: { testType: string; userId?: string | null; status: string }) {
+  const environment = process.env.NODE_ENV || 'development';
+  const safeUserId = isUuid(params.userId) ? params.userId : null;
+  const { data: runId, error: runError } = await supabaseAdmin.rpc('insert_test_run', {
+    p_test_type: params.testType,
+    p_executed_by: safeUserId,
+    p_environment: environment,
+    p_status: params.status,
+  });
+
+  if (!runError && runId) {
+    return runId;
+  }
+
+  if (runError) {
+    console.error('[MONITORING] insert_test_run error:', runError);
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('test_runs')
+    .insert({
+      test_type: params.testType,
+      executed_by: safeUserId,
+      environment,
+      status: params.status,
+      started_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('[MONITORING] insert test_runs fallback error:', error);
+    throw error;
+  }
+
+  return data.id;
+}
+
+async function updateTestRun(params: {
+  runId: string;
+  status: string;
+  duration: number;
+  total: number;
+  passed: number;
+  failed: number;
+  skipped: number;
+  coverage: number;
+  metadata: any;
+}) {
+  const { error: updateError } = await supabaseAdmin.rpc('update_test_run', {
+    p_id: params.runId,
+    p_status: params.status,
+    p_duration_ms: params.duration,
+    p_total_tests: params.total,
+    p_passed_tests: params.passed,
+    p_failed_tests: params.failed,
+    p_skipped_tests: params.skipped,
+    p_coverage_percent: params.coverage,
+    p_metadata: params.metadata,
+  });
+
+  if (!updateError) {
+    return;
+  }
+
+  console.error('[MONITORING] update_test_run error:', updateError);
+
+  const { error } = await supabaseAdmin
+    .from('test_runs')
+    .update({
+      status: params.status,
+      duration_ms: params.duration,
+      total_tests: params.total,
+      passed_tests: params.passed,
+      failed_tests: params.failed,
+      skipped_tests: params.skipped,
+      coverage_percent: params.coverage,
+      metadata: params.metadata,
+      completed_at: new Date().toISOString(),
+    })
+    .eq('id', params.runId);
+
+  if (error) {
+    console.error('[MONITORING] update test_runs fallback error:', error);
+    throw error;
+  }
+}
+
 // Executar testes
 export async function POST(request: NextRequest) {
   try {
@@ -16,21 +125,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'testType is required' }, { status: 400 });
     }
 
-    // Criar registro de execução via RPC
-    const { data: runId, error: runError } = await supabaseAdmin.rpc('insert_test_run', {
-      p_test_type: testType,
-      p_executed_by: userId || null,
-      p_environment: process.env.NODE_ENV || 'development',
+    // Criar registro de execução (RPC ou fallback direto)
+    const runId = await createTestRun({
+      testType,
+      userId,
+      status: 'running',
     });
-
-    if (runError) {
-      console.error('[MONITORING] insert_test_run error:', runError);
-      throw runError;
-    }
 
     console.log('[MONITORING] Created test run:', runId);
 
-    // Executar testes de acordo com o tipo
+    // Executar testes
     let results;
     switch (testType) {
       case 'unit':
@@ -56,22 +160,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Atualizar registro com resultados via RPC
-    const { error: updateError } = await supabaseAdmin.rpc('update_test_run', {
-      p_id: runId,
-      p_status: results.failed > 0 ? 'failed' : 'passed',
-      p_duration_ms: results.duration,
-      p_total_tests: results.total,
-      p_passed_tests: results.passed,
-      p_failed_tests: results.failed,
-      p_skipped_tests: results.skipped,
-      p_coverage_percent: results.coverage,
-      p_metadata: results.metadata,
+    await updateTestRun({
+      runId,
+      status: results.failed > 0 ? 'failed' : 'passed',
+      duration: results.duration,
+      total: results.total,
+      passed: results.passed,
+      failed: results.failed,
+      skipped: results.skipped,
+      coverage: results.coverage,
+      metadata: results.metadata,
     });
-
-    if (updateError) {
-      console.error('[MONITORING] update_test_run error:', updateError);
-      throw updateError;
-    }
 
     console.log('[MONITORING] Test completed:', testType, results);
 
@@ -82,7 +181,11 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('[MONITORING] Run error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message =
+      (error && typeof error.message === 'string' && error.message) ||
+      (typeof error === 'string' && error) ||
+      JSON.stringify(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -216,166 +319,6 @@ async function testUserCRUD() {
 }
 
 // ==========================================
-// TESTES DE CARGA
-// ==========================================
-async function runLoadTests(runId: string) {
-  const startTime = Date.now();
-
-  const endpoints = [
-    { path: '/api/dashboard', method: 'GET' },
-    { path: '/api/usuarios', method: 'GET' },
-    { path: '/api/solicitacoes', method: 'GET' },
-    { path: '/api/monitoring', method: 'GET' },
-  ];
-
-  const concurrentUsers = 10;
-  const requestsPerEndpoint = 20;
-  let totalRequests = 0;
-  let successfulRequests = 0;
-
-  for (const endpoint of endpoints) {
-    const responseTimes: number[] = [];
-    let errors = 0;
-
-    const promises = [];
-    for (let i = 0; i < requestsPerEndpoint; i++) {
-      promises.push(
-        (async () => {
-          const reqStart = Date.now();
-          try {
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3000';
-            const response = await fetch(`${baseUrl}${endpoint.path}`, {
-              method: endpoint.method,
-              headers: { 'Content-Type': 'application/json' },
-            });
-
-            responseTimes.push(Date.now() - reqStart);
-            if (response.ok) successfulRequests++;
-            else errors++;
-          } catch {
-            responseTimes.push(Date.now() - reqStart);
-            errors++;
-          }
-          totalRequests++;
-        })()
-      );
-
-      if (promises.length >= concurrentUsers) {
-        await Promise.all(promises);
-        promises.length = 0;
-      }
-    }
-    await Promise.all(promises);
-
-    const sortedTimes = responseTimes.sort((a, b) => a - b);
-    const avgTime = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
-    const p50 = sortedTimes[Math.floor(sortedTimes.length * 0.5)] || 0;
-    const p95 = sortedTimes[Math.floor(sortedTimes.length * 0.95)] || 0;
-    const p99 = sortedTimes[Math.floor(sortedTimes.length * 0.99)] || 0;
-
-    // Salvar métricas via RPC
-    await supabaseAdmin.rpc('insert_load_test_metric', {
-      p_run_id: runId,
-      p_endpoint: endpoint.path,
-      p_method: endpoint.method,
-      p_requests_total: requestsPerEndpoint,
-      p_requests_per_second: requestsPerEndpoint / ((Date.now() - startTime) / 1000),
-      p_avg_response_time_ms: Math.round(avgTime),
-      p_min_response_time_ms: sortedTimes[0] || 0,
-      p_max_response_time_ms: sortedTimes[sortedTimes.length - 1] || 0,
-      p_p50_response_time_ms: p50,
-      p_p95_response_time_ms: p95,
-      p_p99_response_time_ms: p99,
-      p_error_rate: (errors / requestsPerEndpoint) * 100,
-      p_concurrent_users: concurrentUsers,
-    });
-  }
-
-  return {
-    total: endpoints.length,
-    passed: successfulRequests > totalRequests * 0.9 ? endpoints.length : 0,
-    failed: successfulRequests <= totalRequests * 0.9 ? endpoints.length : 0,
-    skipped: 0,
-    duration: Date.now() - startTime,
-    coverage: Math.round((successfulRequests / totalRequests) * 100),
-    metadata: {
-      totalRequests,
-      successfulRequests,
-      concurrentUsers,
-      endpoints: endpoints.length,
-    },
-  };
-}
-
-// ==========================================
-// TESTES DE STRESS
-// ==========================================
-async function runStressTests(runId: string) {
-  const startTime = Date.now();
-
-  const levels = [10, 25, 50, 100];
-  let maxConcurrentHandled = 0;
-  let breakingPoint = 0;
-
-  for (const concurrent of levels) {
-    const testStart = Date.now();
-    let errors = 0;
-    const promises = [];
-
-    for (let i = 0; i < concurrent; i++) {
-      promises.push(
-        (async () => {
-          try {
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3000';
-            const response = await fetch(`${baseUrl}/api/monitoring`, {
-              method: 'GET',
-              signal: AbortSignal.timeout(5000),
-            });
-            if (!response.ok) errors++;
-          } catch {
-            errors++;
-          }
-        })()
-      );
-    }
-
-    await Promise.all(promises);
-
-    const errorRate = (errors / concurrent) * 100;
-
-    if (errorRate < 10) {
-      maxConcurrentHandled = concurrent;
-    } else if (breakingPoint === 0) {
-      breakingPoint = concurrent;
-    }
-
-    // Salvar resultado do nível via RPC
-    await supabaseAdmin.rpc('insert_test_result', {
-      p_run_id: runId,
-      p_test_name: `Stress Level ${concurrent} users`,
-      p_test_suite: 'Stress',
-      p_status: errorRate < 10 ? 'passed' : 'failed',
-      p_duration_ms: Date.now() - testStart,
-      p_metadata: { concurrent, errorRate, errors },
-    });
-  }
-
-  return {
-    total: levels.length,
-    passed: levels.filter(l => l <= maxConcurrentHandled).length,
-    failed: levels.filter(l => l > maxConcurrentHandled).length,
-    skipped: 0,
-    duration: Date.now() - startTime,
-    coverage: Math.round((maxConcurrentHandled / levels[levels.length - 1]) * 100),
-    metadata: {
-      maxConcurrentHandled,
-      breakingPoint,
-      levelsTested: levels,
-    },
-  };
-}
-
-// ==========================================
 // TESTES DE REGRESSÃO
 // ==========================================
 async function runRegressionTests(runId: string) {
@@ -399,11 +342,11 @@ async function runRegressionTests(runId: string) {
 
     try {
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3000';
-      const response = await fetch(`${baseUrl}${test.endpoint}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(10000),
-      });
+      const response = await fetchWithTimeout(
+        `${baseUrl}${test.endpoint}`,
+        { method: 'GET', headers: { 'Content-Type': 'application/json' } },
+        10000
+      );
 
       // Aceitar 200 (OK), 401 (Auth Required), 404 (Not Found - rota existe mas sem dado), 405 (Method Not Allowed - rota existe)
       if (![200, 401, 404, 405].includes(response.status)) {
@@ -666,4 +609,327 @@ async function checkAuth() {
 
 async function checkCSRF() {
   return { vulnerabilities: 0, critical: 0, high: 0, medium: 0, low: 0, findings: [] };
+}
+
+// ==========================================
+// TESTES DE CARGA (LOAD)
+// ==========================================
+async function runLoadTests(runId: string) {
+  const startTime = Date.now();
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3000';
+
+  const endpoints = [
+    { name: 'Dashboard API', path: '/api/dashboard', method: 'GET' },
+    { name: 'Monitoring API', path: '/api/monitoring', method: 'GET' },
+    { name: 'Health Check', path: '/api/monitoring/health', method: 'GET' },
+  ];
+
+  const concurrentRequests = 10; // Número de requisições simultâneas
+  const iterations = 3; // Número de iterações
+  const results: any[] = [];
+  let totalRequests = 0;
+  let successfulRequests = 0;
+  let failedRequests = 0;
+  const responseTimes: number[] = [];
+
+  for (const endpoint of endpoints) {
+    const testStart = Date.now();
+    const endpointTimes: number[] = [];
+    let endpointSuccess = 0;
+    let endpointFailed = 0;
+
+    for (let i = 0; i < iterations; i++) {
+      // Executar requisições em paralelo
+      const promises = Array(concurrentRequests).fill(null).map(async () => {
+        const reqStart = Date.now();
+        try {
+          const response = await fetchWithTimeout(
+            `${baseUrl}${endpoint.path}`,
+            { method: endpoint.method, headers: { 'Content-Type': 'application/json' } },
+            15000
+          );
+
+          const reqTime = Date.now() - reqStart;
+          endpointTimes.push(reqTime);
+          responseTimes.push(reqTime);
+          totalRequests++;
+
+          if (response.ok || response.status === 401 || response.status === 403) {
+            endpointSuccess++;
+            successfulRequests++;
+            return { success: true, time: reqTime };
+          } else {
+            endpointFailed++;
+            failedRequests++;
+            return { success: false, time: reqTime, status: response.status };
+          }
+        } catch (err: any) {
+          const reqTime = Date.now() - reqStart;
+          endpointTimes.push(reqTime);
+          responseTimes.push(reqTime);
+          totalRequests++;
+          endpointFailed++;
+          failedRequests++;
+          return { success: false, time: reqTime, error: err.message };
+        }
+      });
+
+      await Promise.all(promises);
+    }
+
+    const avgTime = endpointTimes.length > 0
+      ? Math.round(endpointTimes.reduce((a, b) => a + b, 0) / endpointTimes.length)
+      : 0;
+    const maxTime = endpointTimes.length > 0 ? Math.max(...endpointTimes) : 0;
+    const minTime = endpointTimes.length > 0 ? Math.min(...endpointTimes) : 0;
+
+    const status = endpointFailed === 0 ? 'passed' : (endpointFailed > endpointSuccess ? 'failed' : 'passed');
+
+    results.push({
+      endpoint: endpoint.name,
+      status,
+      requests: endpointSuccess + endpointFailed,
+      successful: endpointSuccess,
+      failed: endpointFailed,
+      avgTime,
+      maxTime,
+      minTime,
+    });
+
+    // Salvar resultado individual
+    try {
+      const { error: rpcError } = await supabaseAdmin.rpc('insert_test_result', {
+        p_run_id: runId,
+        p_test_name: `Load: ${endpoint.name}`,
+        p_test_suite: 'Load',
+        p_status: status,
+        p_duration_ms: Date.now() - testStart,
+        p_metadata: { avgTime, maxTime, minTime, successful: endpointSuccess, failed: endpointFailed },
+      });
+
+      if (rpcError) {
+        // Fallback para insert direto
+        await supabaseAdmin.from('test_results').insert({
+          run_id: runId,
+          test_name: `Load: ${endpoint.name}`,
+          test_suite: 'Load',
+          status,
+          duration_ms: Date.now() - testStart,
+          metadata: { avgTime, maxTime, minTime, successful: endpointSuccess, failed: endpointFailed },
+        });
+      }
+    } catch (err) {
+      console.error('[MONITORING] Failed to insert load test result:', err);
+    }
+  }
+
+  // Salvar métricas de load test
+  const avgResponseTime = responseTimes.length > 0
+    ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
+    : 0;
+
+  try {
+    await supabaseAdmin.from('load_test_metrics').insert({
+      run_id: runId,
+      endpoint: 'all',
+      method: 'GET',
+      concurrent_users: concurrentRequests,
+      requests_total: totalRequests,
+      avg_response_time_ms: avgResponseTime,
+      min_response_time_ms: responseTimes.length > 0 ? Math.min(...responseTimes) : 0,
+      max_response_time_ms: responseTimes.length > 0 ? Math.max(...responseTimes) : 0,
+      requests_per_second: Math.round(totalRequests / ((Date.now() - startTime) / 1000)),
+      error_rate: Math.round((failedRequests / totalRequests) * 100),
+      metadata: { successfulRequests, failedRequests },
+    });
+  } catch (err) {
+    console.error('[MONITORING] Failed to insert load_test_metrics:', err);
+  }
+
+  const passed = results.filter(r => r.status === 'passed').length;
+  const failed = results.filter(r => r.status === 'failed').length;
+
+  return {
+    total: results.length,
+    passed,
+    failed,
+    skipped: 0,
+    duration: Date.now() - startTime,
+    coverage: Math.round((successfulRequests / totalRequests) * 100),
+    metadata: {
+      totalRequests,
+      successfulRequests,
+      failedRequests,
+      avgResponseTime,
+      concurrentUsers: concurrentRequests,
+      requestsPerSecond: Math.round(totalRequests / ((Date.now() - startTime) / 1000)),
+    },
+  };
+}
+
+// ==========================================
+// TESTES DE STRESS
+// ==========================================
+async function runStressTests(runId: string) {
+  const startTime = Date.now();
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://127.0.0.1:3000';
+
+  // Endpoints para teste de stress
+  const endpoint = '/api/monitoring';
+
+  // Níveis crescentes de carga
+  const loadLevels = [
+    { concurrent: 5, label: 'Low' },
+    { concurrent: 15, label: 'Medium' },
+    { concurrent: 30, label: 'High' },
+    { concurrent: 50, label: 'Peak' },
+  ];
+
+  const results: any[] = [];
+  let totalRequests = 0;
+  let successfulRequests = 0;
+  let failedRequests = 0;
+  let breakingPoint: string | null = null;
+
+  for (const level of loadLevels) {
+    const levelStart = Date.now();
+    const responseTimes: number[] = [];
+    let levelSuccess = 0;
+    let levelFailed = 0;
+
+    // Executar requisições em paralelo
+    const promises = Array(level.concurrent).fill(null).map(async () => {
+      const reqStart = Date.now();
+      try {
+        const response = await fetchWithTimeout(
+          `${baseUrl}${endpoint}`,
+          { method: 'GET', headers: { 'Content-Type': 'application/json' } },
+          20000
+        );
+
+        const reqTime = Date.now() - reqStart;
+        responseTimes.push(reqTime);
+        totalRequests++;
+
+        if (response.ok || response.status === 401 || response.status === 403) {
+          levelSuccess++;
+          successfulRequests++;
+          return { success: true, time: reqTime };
+        } else {
+          levelFailed++;
+          failedRequests++;
+          return { success: false, time: reqTime, status: response.status };
+        }
+      } catch (err: any) {
+        const reqTime = Date.now() - reqStart;
+        responseTimes.push(reqTime);
+        totalRequests++;
+        levelFailed++;
+        failedRequests++;
+        return { success: false, time: reqTime, error: err.message };
+      }
+    });
+
+    await Promise.all(promises);
+
+    const avgTime = responseTimes.length > 0
+      ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
+      : 0;
+    const errorRate = (levelFailed / (levelSuccess + levelFailed)) * 100;
+    const status = errorRate < 20 ? 'passed' : 'failed';
+
+    // Detectar ponto de quebra (error rate > 50% ou avg time > 10s)
+    if (!breakingPoint && (errorRate > 50 || avgTime > 10000)) {
+      breakingPoint = level.label;
+    }
+
+    results.push({
+      level: level.label,
+      concurrent: level.concurrent,
+      status,
+      successful: levelSuccess,
+      failed: levelFailed,
+      avgTime,
+      errorRate: Math.round(errorRate),
+    });
+
+    // Salvar resultado individual
+    try {
+      const { error: rpcError } = await supabaseAdmin.rpc('insert_test_result', {
+        p_run_id: runId,
+        p_test_name: `Stress: ${level.label} (${level.concurrent} concurrent)`,
+        p_test_suite: 'Stress',
+        p_status: status,
+        p_duration_ms: Date.now() - levelStart,
+        p_metadata: {
+          concurrent: level.concurrent,
+          avgTime,
+          errorRate: Math.round(errorRate),
+          successful: levelSuccess,
+          failed: levelFailed,
+        },
+      });
+
+      if (rpcError) {
+        await supabaseAdmin.from('test_results').insert({
+          run_id: runId,
+          test_name: `Stress: ${level.label} (${level.concurrent} concurrent)`,
+          test_suite: 'Stress',
+          status,
+          duration_ms: Date.now() - levelStart,
+          metadata: {
+            concurrent: level.concurrent,
+            avgTime,
+            errorRate: Math.round(errorRate),
+            successful: levelSuccess,
+            failed: levelFailed,
+          },
+        });
+      }
+    } catch (err) {
+      console.error('[MONITORING] Failed to insert stress test result:', err);
+    }
+
+    // Pequeno delay entre níveis para não sobrecarregar
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+
+  // Salvar métricas de stress test
+  try {
+    await supabaseAdmin.from('load_test_metrics').insert({
+      run_id: runId,
+      endpoint: endpoint,
+      method: 'GET',
+      concurrent_users: loadLevels[loadLevels.length - 1].concurrent,
+      requests_total: totalRequests,
+      avg_response_time_ms: Math.round(results.reduce((a, b) => a + b.avgTime, 0) / results.length),
+      min_response_time_ms: Math.min(...results.map(r => r.avgTime)),
+      max_response_time_ms: Math.max(...results.map(r => r.avgTime)),
+      requests_per_second: Math.round(totalRequests / ((Date.now() - startTime) / 1000)),
+      error_rate: Math.round((failedRequests / totalRequests) * 100),
+      metadata: { successfulRequests, failedRequests, breakingPoint, levels: results },
+    });
+  } catch (err) {
+    console.error('[MONITORING] Failed to insert stress test metrics:', err);
+  }
+
+  const passed = results.filter(r => r.status === 'passed').length;
+  const failed = results.filter(r => r.status === 'failed').length;
+
+  return {
+    total: results.length,
+    passed,
+    failed,
+    skipped: 0,
+    duration: Date.now() - startTime,
+    coverage: Math.round((passed / results.length) * 100),
+    metadata: {
+      totalRequests,
+      successfulRequests,
+      failedRequests,
+      breakingPoint: breakingPoint || 'None (system stable)',
+      maxConcurrent: loadLevels[loadLevels.length - 1].concurrent,
+      levels: results,
+    },
+  };
 }

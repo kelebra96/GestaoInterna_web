@@ -1,15 +1,25 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { isPublicRoute } from '@/lib/accessControl';
 import { Menu, Maximize, Minimize, Share, X } from 'lucide-react';
+import { io, Socket } from 'socket.io-client';
+import { supabase } from '@/lib/supabase-client';
 import Sidebar from './Sidebar';
 import { RoleGuard } from './RoleGuard';
 
+interface AppToast {
+  id: string;
+  title: string;
+  body?: string;
+  href?: string;
+}
+
 export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, loading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -18,6 +28,15 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const [isStandalone, setIsStandalone] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [appToasts, setAppToasts] = useState<AppToast[]>([]);
+  const socketRef = useRef<Socket | null>(null);
+  const pendingCallRef = useRef<{
+    timerId?: number;
+    callerId?: string;
+    callerName?: string;
+    conversationId?: string;
+    callType?: 'voice' | 'video';
+  } | null>(null);
 
   // Detectar se é mobile (< 1024px)
   useEffect(() => {
@@ -84,6 +103,211 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isFullscreen]);
+
+  const addToast = (toast: Omit<AppToast, 'id'> & { id?: string }) => {
+    const id = toast.id || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    setAppToasts((prev) => [...prev, { ...toast, id }]);
+    window.setTimeout(() => {
+      setAppToasts((prev) => prev.filter((item) => item.id !== id));
+    }, 6000);
+  };
+
+  const notificationsEnabled = () => {
+    try {
+      return localStorage.getItem('pref.notifications') !== 'off';
+    } catch {
+      return true;
+    }
+  };
+
+  const notifyBrowser = async (title: string, body: string, href?: string) => {
+    if (!notificationsEnabled()) return;
+    if (!('Notification' in window)) return;
+    let permission = Notification.permission;
+    if (permission === 'default') {
+      try {
+        permission = await Notification.requestPermission();
+      } catch {
+        permission = 'default';
+      }
+    }
+    if (permission !== 'granted') return;
+    const notif = new Notification(title, { body });
+    notif.onclick = () => {
+      window.focus();
+      if (href) {
+        router.push(href);
+      }
+      notif.close();
+    };
+  };
+
+  const registerCallNotification = async (payload: {
+    receiverId: string;
+    callerId?: string;
+    callerName?: string;
+    conversationId?: string;
+    callType?: 'voice' | 'video';
+    status?: 'received' | 'missed';
+  }) => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return;
+      await fetch('/api/notificacoes/call', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (error) {
+      console.error('Erro ao registrar notificação de chamada:', error);
+    }
+  };
+
+  const clearPendingCall = () => {
+    if (pendingCallRef.current?.timerId) {
+      window.clearTimeout(pendingCallRef.current.timerId);
+    }
+    pendingCallRef.current = null;
+  };
+
+  useEffect(() => {
+    if (pathname?.startsWith('/mensagens')) {
+      clearPendingCall();
+    }
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    const channel = supabase
+      .channel(`global-messages-${user.uid}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `receiver_id=eq.${user.uid}`,
+        },
+        (payload) => {
+          const newMsg = payload.new as any;
+          if (!newMsg) return;
+          if (pathname?.startsWith('/mensagens')) return;
+
+          let attachments: any[] = [];
+          if (Array.isArray(newMsg.attachments)) {
+            attachments = newMsg.attachments;
+          } else if (typeof newMsg.attachments === 'string') {
+            try {
+              const parsed = JSON.parse(newMsg.attachments);
+              if (Array.isArray(parsed)) attachments = parsed;
+            } catch {
+              attachments = [];
+            }
+          }
+
+          const isImage = attachments.some((item) => item?.type === 'image');
+          const body =
+            (newMsg.text && String(newMsg.text).trim()) ||
+            (attachments.length > 0 ? (isImage ? 'Enviou uma imagem' : 'Enviou um arquivo') : 'Nova mensagem');
+          const senderName = newMsg.sender_name || 'Nova mensagem';
+          const href = newMsg.conversation_id ? `/mensagens/${newMsg.conversation_id}` : undefined;
+
+          addToast({
+            title: senderName,
+            body,
+            href,
+          });
+          void notifyBrowser(senderName, body, href);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [pathname, router, user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    const signalingUrl = process.env.NEXT_PUBLIC_SIGNALING_SERVER_URL || 'http://localhost:3002';
+    const signalingPath = process.env.NEXT_PUBLIC_SIGNALING_SOCKET_PATH || '/socket.io';
+    const socket = io(signalingUrl, {
+      path: signalingPath,
+      transports: ['websocket'],
+      reconnection: true,
+    });
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      socket.emit('register', { userId: user.uid, conversationId: 'global' });
+    });
+
+    socket.on('incoming-call', ({ callType, caller }) => {
+      if (pathname?.startsWith('/mensagens')) return;
+      const callerName = caller?.userId ? `Chamada de ${caller.userId}` : 'Chamada recebida';
+      const callLabel = callType === 'video' ? 'Chamada de vídeo' : 'Chamada de voz';
+      const href = caller?.conversationId ? `/mensagens/${caller.conversationId}` : undefined;
+
+      addToast({
+        title: callerName,
+        body: callLabel,
+        href,
+      });
+      void notifyBrowser(callerName, callLabel, href);
+      void registerCallNotification({
+        receiverId: user.uid,
+        callerId: caller?.userId,
+        conversationId: caller?.conversationId,
+        callType,
+        status: 'received',
+      });
+
+      clearPendingCall();
+      const timerId = window.setTimeout(() => {
+        if (!pendingCallRef.current) return;
+        void registerCallNotification({
+          receiverId: user.uid,
+          callerId: pendingCallRef.current.callerId,
+          callerName: pendingCallRef.current.callerName,
+          conversationId: pendingCallRef.current.conversationId,
+          callType: pendingCallRef.current.callType,
+          status: 'missed',
+        });
+        clearPendingCall();
+      }, 35000);
+
+      pendingCallRef.current = {
+        timerId,
+        callerId: caller?.userId,
+        callerName: caller?.displayName || caller?.userId,
+        conversationId: caller?.conversationId,
+        callType,
+      };
+    });
+
+    socket.on('call-ended', () => {
+      if (!pendingCallRef.current) return;
+      void registerCallNotification({
+        receiverId: user.uid,
+        callerId: pendingCallRef.current.callerId,
+        callerName: pendingCallRef.current.callerName,
+        conversationId: pendingCallRef.current.conversationId,
+        callType: pendingCallRef.current.callType,
+        status: 'missed',
+      });
+      clearPendingCall();
+    });
+
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+      clearPendingCall();
+    };
+  }, [pathname, router, user?.uid]);
 
   // Função para toggle fullscreen
   const toggleFullscreen = async () => {
@@ -266,9 +490,31 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
+        {appToasts.length > 0 && (
+          <div className="fixed top-32 lg:top-20 right-6 z-[120] space-y-3">
+            {appToasts.map((toast) => (
+              <button
+                key={toast.id}
+                type="button"
+                onClick={() => {
+                  if (toast.href) {
+                    router.push(toast.href);
+                  }
+                  setAppToasts((prev) => prev.filter((item) => item.id !== toast.id));
+                }}
+                className="w-80 text-left bg-white border border-[#E0E0E0] rounded-2xl shadow-2xl px-4 py-3 hover:shadow-3xl transition-all"
+              >
+                <div className="text-sm font-bold text-[#212121]">{toast.title}</div>
+                {toast.body && <div className="text-xs text-[#757575] mt-1 line-clamp-2">{toast.body}</div>}
+              </button>
+            ))}
+          </div>
+        )}
+
         <Sidebar
           mobileOpen={mobileMenuOpen}
           onMobileClose={() => setMobileMenuOpen(false)}
+          isMobile={isMobile}
         />
 
         {/* Mobile Header com menu hamburguer - só aparece em telas < 1024px */}

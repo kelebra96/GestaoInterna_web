@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import supabase from '@/lib/supabase-client';
 import {
   Activity,
   Shield,
@@ -89,6 +90,19 @@ interface AiSolution {
   codeSnippet?: string;
 }
 
+import HealthStatusChart from './components/HealthStatusChart';
+import ResponseTimeChart from './components/ResponseTimeChart';
+
+interface ImageReviewItem {
+  id: string;
+  nome?: string | null;
+  descricao?: string | null;
+  ean?: string | null;
+  sku?: string | null;
+  image_candidate_urls?: string[] | null;
+  image_source?: string | null;
+}
+
 const TEST_TYPES = [
   { key: 'unit', label: 'Unitários', icon: Bug, description: 'Testa funções e componentes isoladamente' },
   { key: 'load', label: 'Carga', icon: Gauge, description: 'Testa performance com múltiplas requisições' },
@@ -104,7 +118,7 @@ export default function MonitoramentoPage() {
   const [data, setData] = useState<MonitoringData | null>(null);
   const [loading, setLoading] = useState(true);
   const [runningTests, setRunningTests] = useState<Set<string>>(new Set());
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['overview', 'tests', 'health']));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['overview', 'charts', 'tests', 'health']));
   const [error, setError] = useState<string | null>(null);
   const [runningHealthCheck, setRunningHealthCheck] = useState(false);
   
@@ -112,6 +126,20 @@ export default function MonitoramentoPage() {
   const [analyzingAi, setAnalyzingAi] = useState(false);
   const [aiSolutions, setAiSolutions] = useState<AiSolution[] | null>(null);
   const [showAiModal, setShowAiModal] = useState(false);
+  const [imageBackfillRunning, setImageBackfillRunning] = useState(false);
+  const [imageBackfillResult, setImageBackfillResult] = useState<any>(null);
+  const [imageReviewItems, setImageReviewItems] = useState<ImageReviewItem[]>([]);
+  const [imageReviewLoading, setImageReviewLoading] = useState(false);
+  const [imageReviewError, setImageReviewError] = useState<string | null>(null);
+  const [manualImageUrls, setManualImageUrls] = useState<Record<string, string>>({});
+  const [manualImagePreviews, setManualImagePreviews] = useState<Record<string, string>>({});
+  const [pasteStatus, setPasteStatus] = useState<Record<string, string>>({});
+  const lastRealtimeAtRef = useRef<number>(0);
+
+  const getAccessToken = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token || '';
+  }, []);
 
   // Verificar acesso - apenas developers
   useEffect(() => {
@@ -122,18 +150,13 @@ export default function MonitoramentoPage() {
     }
   }, [user, authLoading, router]);
 
-  // Buscar dados de monitoramento
   const fetchData = useCallback(async () => {
+    // setLoading(true) é removido para atualizações em background mais suaves
+    console.log('[Monitoramento] Fetching data...');
     try {
-      setLoading(true);
-      setError(null);
-      console.log('[Monitoramento] Fetching data...');
-
       const response = await fetch('/api/monitoring', {
         cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
+        headers: { 'Cache-Control': 'no-cache' },
       });
 
       if (response.ok) {
@@ -147,20 +170,252 @@ export default function MonitoramentoPage() {
       }
     } catch (err) {
       console.error('[Monitoramento] Exception:', err);
-      setError('Erro de conexão');
+      setError((prevError) => prevError || 'Erro de conexão');
     } finally {
-      setLoading(false);
+      setLoading(false); // Só desativa o loading inicial
     }
   }, []);
 
+  // Fetch, Realtime Subscription, e outras funções
   useEffect(() => {
+    // Busca inicial de dados
     fetchData();
-    const interval = setInterval(fetchData, 60000); // Atualizar a cada 60 segundos
-    return () => clearInterval(interval);
+
+    // Configuração do Supabase Realtime
+    const channel = supabase
+      .channel('monitoramento_updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'test_runs' }, (payload) => {
+        console.log('[Realtime] Mudança detectada em test_runs:', payload);
+        lastRealtimeAtRef.current = Date.now();
+        fetchData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'system_health' }, (payload) => {
+        console.log('[Realtime] Mudança detectada em system_health:', payload);
+        lastRealtimeAtRef.current = Date.now();
+        fetchData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'security_scans' }, (payload) => {
+        console.log('[Realtime] Mudança detectada em security_scans:', payload);
+        lastRealtimeAtRef.current = Date.now();
+        fetchData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'quality_metrics' }, (payload) => {
+        console.log('[Realtime] Mudança detectada em quality_metrics:', payload);
+        lastRealtimeAtRef.current = Date.now();
+        fetchData();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'load_test_metrics' }, (payload) => {
+        console.log('[Realtime] Mudança detectada em load_test_metrics:', payload);
+        lastRealtimeAtRef.current = Date.now();
+        fetchData();
+      })
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[Realtime] Conectado ao canal de monitoramento!');
+          lastRealtimeAtRef.current = Date.now();
+          setError(null); // Limpa erro anterior ao reconectar
+        }
+        if (status === 'CHANNEL_ERROR') {
+          const errorMsg = err?.message || err || 'Conexão perdida';
+          console.error('[Realtime] Erro no canal:', errorMsg);
+          // Não exibe erro para o usuário se for apenas desconexão temporária
+          // O fallback polling garantirá atualizações
+        }
+        if (status === 'TIMED_OUT') {
+          console.warn('[Realtime] Conexão expirou. Tentando reconectar...');
+        }
+        if (status === 'CLOSED') {
+          console.log('[Realtime] Canal fechado');
+        }
+      });
+
+    // Fallback: polling leve para garantir atualização caso realtime falhe
+    const fallbackInterval = window.setInterval(() => {
+      const last = lastRealtimeAtRef.current;
+      if (!last || Date.now() - last > 45000) {
+        fetchData();
+      }
+    }, 20000);
+
+    // Limpeza ao desmontar o componente
+    return () => {
+      window.clearInterval(fallbackInterval);
+      supabase.removeChannel(channel);
+    };
   }, [fetchData]);
 
+  const fetchImageReview = useCallback(async () => {
+    try {
+      setImageReviewLoading(true);
+      setImageReviewError(null);
+      const token = await getAccessToken();
+      const response = await fetch('/api/images/review', {
+        cache: 'no-store',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.error || 'Falha ao carregar revisão');
+      }
+      setImageReviewItems(result.items || []);
+    } catch (err: any) {
+      setImageReviewError(err.message || 'Erro ao carregar revisão');
+    } finally {
+      setImageReviewLoading(false);
+    }
+  }, [getAccessToken]);
+
+  const runImageBackfill = async () => {
+    if (imageBackfillRunning) return;
+    setImageBackfillRunning(true);
+    setImageBackfillResult(null);
+    try {
+      const token = await getAccessToken();
+      const response = await fetch('/api/images/backfill?limit=50', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.error || 'Erro ao executar backfill');
+      }
+      setImageBackfillResult(result);
+      await fetchImageReview();
+    } catch (err: any) {
+      alert(err.message || 'Erro ao executar backfill');
+    } finally {
+      setImageBackfillRunning(false);
+    }
+  };
+
+  const approveImage = async (productId: string, imageUrl: string) => {
+    try {
+      const token = await getAccessToken();
+      const response = await fetch('/api/images/approve', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ productId, imageUrl }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.error || 'Erro ao aprovar');
+      await fetchImageReview();
+      setManualImageUrls((prev) => {
+        const next = { ...prev };
+        delete next[productId];
+        return next;
+      });
+    } catch (err: any) {
+      alert(err.message || 'Erro ao aprovar imagem');
+    }
+  };
+
+  const approveUpload = async (productId: string, file?: File | null) => {
+    if (!file) return;
+    try {
+      const token = await getAccessToken();
+      const formData = new FormData();
+      formData.append('productId', productId);
+      formData.append('file', file);
+      const response = await fetch('/api/images/approve-upload', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: formData,
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.error || 'Erro ao enviar imagem');
+      await fetchImageReview();
+      setManualImageFiles((prev) => ({ ...prev, [productId]: null }));
+      setPasteStatus((prev) => ({ ...prev, [productId]: 'Imagem colada enviada com sucesso.' }));
+    } catch (err: any) {
+      setPasteStatus((prev) => ({ ...prev, [productId]: err.message || 'Erro ao enviar imagem' }));
+      alert(err.message || 'Erro ao enviar imagem');
+    }
+  };
+
+  const approveUrlViaBrowser = async (productId: string, url: string) => {
+    if (!url) return;
+    try {
+      const response = await fetch(url, { mode: 'cors' });
+      if (!response.ok) {
+        throw new Error(`Falha ao baixar via navegador: ${response.status}`);
+      }
+      const blob = await response.blob();
+      if (!blob.type.startsWith('image/')) {
+        throw new Error('Arquivo não é imagem');
+      }
+      const file = new File([blob], 'produto.jpg', { type: blob.type });
+      await approveUpload(productId, file);
+    } catch (err: any) {
+      alert(err.message || 'Falha ao baixar via navegador (CORS/403). Faça upload manual.');
+    }
+  };
+
+  const handlePasteImage = async (productId: string, event: React.ClipboardEvent<HTMLInputElement>) => {
+    const items = Array.from(event.clipboardData?.items || []);
+    const imageItem = items.find((item) => item.type.startsWith('image/'));
+    if (!imageItem) return;
+    event.preventDefault();
+    const file = imageItem.getAsFile();
+    if (!file) return;
+    setPasteStatus((prev) => ({ ...prev, [productId]: 'Imagem colada detectada. Enviando...' }));
+    await approveUpload(productId, file);
+  };
+
+  const handlePasteImageBox = async (productId: string, event: React.ClipboardEvent<HTMLDivElement>) => {
+    const items = Array.from(event.clipboardData?.items || []);
+    const imageItem = items.find((item) => item.type.startsWith('image/'));
+    if (!imageItem) return;
+    event.preventDefault();
+    const file = imageItem.getAsFile();
+    if (!file) return;
+    setPasteStatus((prev) => ({ ...prev, [productId]: 'Imagem colada detectada. Enviando...' }));
+    await approveUpload(productId, file);
+  };
+
+  const handleDropImage = async (productId: string, event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const file = event.dataTransfer?.files?.[0];
+    if (!file || !file.type.startsWith('image/')) {
+      setPasteStatus((prev) => ({ ...prev, [productId]: 'Arquivo inválido. Use uma imagem.' }));
+      return;
+    }
+    setPasteStatus((prev) => ({ ...prev, [productId]: 'Imagem recebida. Enviando...' }));
+    await approveUpload(productId, file);
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+  };
+  const rejectImage = async (productId: string) => {
+    try {
+      const token = await getAccessToken();
+      const response = await fetch('/api/images/reject', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ productId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.error || 'Erro ao rejeitar');
+      await fetchImageReview();
+    } catch (err: any) {
+      alert(err.message || 'Erro ao rejeitar imagem');
+    }
+  };
+
+  useEffect(() => {
+    if (user && user.role === 'developer') {
+      fetchImageReview();
+    }
+  }, [fetchImageReview, user]);
+
   // Executar teste
-  const runTest = async (testType: string) => {
+  const runTest = useCallback(async (testType: string) => {
     if (runningTests.has(testType)) {
       console.log('[Monitoramento] Test already running:', testType);
       return;
@@ -176,15 +431,20 @@ export default function MonitoramentoPage() {
         body: JSON.stringify({ testType, userId: user?.uid }),
       });
 
-      const result = await response.json();
+      let result: any = null;
+      const rawText = await response.text();
+      try {
+        result = rawText ? JSON.parse(rawText) : {};
+      } catch {
+        result = { error: rawText || `HTTP ${response.status}` };
+      }
       console.log('[Monitoramento] Test result:', result);
 
       if (response.ok) {
-        // Atualizar dados após o teste
         await fetchData();
       } else {
-        console.error('[Monitoramento] Test error:', result);
-        alert(`Erro ao executar teste: ${result.error || 'Erro desconhecido'}`);
+        console.error('[Monitoramento] Test error:', { status: response.status, result });
+        alert(`Erro ao executar teste: ${result.error || `HTTP ${response.status}`}`);
       }
     } catch (err) {
       console.error('[Monitoramento] Test exception:', err);
@@ -196,7 +456,7 @@ export default function MonitoramentoPage() {
         return next;
       });
     }
-  };
+  }, [user?.uid, runningTests]);
 
   // Executar health check
   const runHealthCheck = async () => {
@@ -213,9 +473,6 @@ export default function MonitoramentoPage() {
       const result = await response.json();
       console.log('[Monitoramento] Health check result:', result);
 
-      if (response.ok) {
-        await fetchData();
-      }
     } catch (err) {
       console.error('[Monitoramento] Health check exception:', err);
     } finally {
@@ -261,6 +518,42 @@ export default function MonitoramentoPage() {
       return next;
     });
   };
+
+  // Health check automático com otimizações (somente para developers)
+  useEffect(() => {
+    if (authLoading || !user || user.role !== 'developer') return;
+
+    const intervalMs = 30000; // 30s padrão para reduzir carga
+    let intervalId: number | undefined;
+
+    const start = () => {
+      if (intervalId) return;
+      intervalId = window.setInterval(() => {
+        if (!document.hidden) {
+          runHealthCheck();
+        }
+      }, intervalMs);
+    };
+
+    const stop = () => {
+      if (!intervalId) return;
+      window.clearInterval(intervalId);
+      intervalId = undefined;
+    };
+
+    const handleVisibility = () => {
+      if (document.hidden) stop();
+      else start();
+    };
+
+    start();
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [authLoading, user, runHealthCheck]);
 
   // Componente de status badge
   const StatusBadge = ({ status }: { status: string }) => {
@@ -422,6 +715,218 @@ export default function MonitoramentoPage() {
                   <p className="text-3xl font-bold text-amber-700">{data?.stats?.totalVulnerabilities || 0}</p>
                 </div>
               </div>
+            </div>
+          )}
+        </section>
+
+        {/* Real-time Metrics */}
+        <section className="mb-8">
+          <div
+            className="flex items-center justify-between cursor-pointer bg-white rounded-t-2xl px-6 py-4 border-2 border-[#E0E0E0]"
+            onClick={() => toggleSection('charts')}
+          >
+            <h2 className="text-xl font-bold text-[#132440] flex items-center gap-2">
+              <Gauge className="w-6 h-6 text-[#3B9797]" />
+              Métricas em Tempo Real
+            </h2>
+            {expandedSections.has('charts') ? <ChevronUp className="text-[#757575]" /> : <ChevronDown className="text-[#757575]" />}
+          </div>
+
+          {expandedSections.has('charts') && (
+            <div className="bg-white rounded-b-2xl border-2 border-t-0 border-[#E0E0E0] p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <HealthStatusChart systemHealth={data?.systemHealth || []} />
+                <ResponseTimeChart systemHealth={data?.systemHealth || []} />
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Image Backfill */}
+        <section className="mb-8">
+          <div
+            className="flex items-center justify-between cursor-pointer bg-white rounded-t-2xl px-6 py-4 border-2 border-[#E0E0E0]"
+            onClick={() => toggleSection('images')}
+          >
+            <h2 className="text-xl font-bold text-[#132440] flex items-center gap-2">
+              <Sparkles className="w-6 h-6 text-[#3B9797]" />
+              Pipeline de Imagens
+            </h2>
+            {expandedSections.has('images') ? <ChevronUp className="text-[#757575]" /> : <ChevronDown className="text-[#757575]" />}
+          </div>
+
+          {expandedSections.has('images') && (
+            <div className="bg-white rounded-b-2xl border-2 border-t-0 border-[#E0E0E0] p-6 space-y-5">
+              <div className="flex flex-wrap items-center gap-4">
+                <button
+                  onClick={runImageBackfill}
+                  disabled={imageBackfillRunning}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#16476A] to-[#3B9797] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+                >
+                  <Play className="w-4 h-4" />
+                  {imageBackfillRunning ? 'Executando...' : 'Backfill imagens'}
+                </button>
+                <button
+                  onClick={fetchImageReview}
+                  disabled={imageReviewLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-[#E0E0E0] text-[#16476A] rounded-lg hover:border-[#3B9797]"
+                >
+                  <RefreshCw className={`w-4 h-4 ${imageReviewLoading ? 'animate-spin' : ''}`} />
+                  Atualizar pendências
+                </button>
+                {imageBackfillResult && (
+                  <div className="text-sm text-[#424242]">
+                    Processados: <span className="font-semibold">{imageBackfillResult.processed}</span> ·
+                    OK: <span className="font-semibold text-[#3B9797]">{imageBackfillResult.ok}</span> ·
+                    Revisão: <span className="font-semibold text-amber-600">{imageBackfillResult.needs_review}</span> ·
+                    Erros: <span className="font-semibold text-[#BF092F]">{imageBackfillResult.error}</span>
+                  </div>
+                )}
+              </div>
+
+              {imageReviewError && (
+                <div className="text-sm text-[#BF092F]">{imageReviewError}</div>
+              )}
+
+              {imageReviewLoading ? (
+                <div className="text-sm text-[#757575]">Carregando pendências...</div>
+              ) : imageReviewItems.length === 0 ? (
+                <div className="text-sm text-[#757575]">Nenhum item aguardando revisão.</div>
+              ) : (
+                <div className="space-y-4">
+                  {imageReviewItems.map((item) => (
+                    <div key={item.id} className="border-2 border-[#E0E0E0] rounded-xl p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="font-bold text-[#132440]">{item.nome || item.descricao || 'Produto'}</p>
+                          <p className="text-xs text-[#757575]">EAN: {item.ean || '—'} · SKU: {item.sku || '—'}</p>
+                        </div>
+                        <button
+                          onClick={() => rejectImage(item.id)}
+                          className="px-3 py-1 rounded-lg border border-[#BF092F] text-[#BF092F] text-xs font-semibold hover:bg-[#BF092F]/10"
+                        >
+                          Rejeitar
+                        </button>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {(item.image_candidate_urls || []).length === 0 ? (
+                          <div className="text-xs text-[#757575]">Sem candidatos registrados.</div>
+                        ) : (
+                          (item.image_candidate_urls || []).map((url, idx) => (
+                            <button
+                              key={`${item.id}-${idx}`}
+                              onClick={() => approveImage(item.id, url)}
+                              className="w-full text-left text-xs border border-[#E0E0E0] rounded-lg p-2 hover:border-[#3B9797] hover:bg-[#F3F6F9]"
+                              title={url}
+                            >
+                              Aprovar: {url}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                      <div className="mt-4 flex flex-col gap-2">
+                        <label className="text-xs font-semibold text-[#16476A]">
+                          Colar URL manual da imagem
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          <input
+                            value={manualImageUrls[item.id] || ''}
+                            onChange={(event) =>
+                              setManualImageUrls((prev) => ({
+                                ...prev,
+                                [item.id]: event.target.value,
+                              }))
+                            }
+                            onPaste={(event) => handlePasteImage(item.id, event)}
+                            placeholder="https://..."
+                            className="flex-1 min-w-[240px] rounded-lg border border-[#E0E0E0] px-3 py-2 text-xs"
+                          />
+                          <button
+                            onClick={() => approveImage(item.id, manualImageUrls[item.id] || '')}
+                            type="button"
+                            className="px-3 py-2 rounded-lg bg-[#16476A] text-white text-xs font-semibold hover:opacity-90"
+                            disabled={!manualImageUrls[item.id]}
+                          >
+                            Aprovar URL (servidor)
+                          </button>
+                          <button
+                            onClick={() => approveUrlViaBrowser(item.id, manualImageUrls[item.id] || '')}
+                            type="button"
+                            className="px-3 py-2 rounded-lg bg-[#3B9797] text-white text-xs font-semibold hover:opacity-90"
+                            disabled={!manualImageUrls[item.id]}
+                          >
+                            Baixar e Aprovar (navegador)
+                          </button>
+                        </div>
+                        {pasteStatus[item.id] && (
+                          <div className="text-xs text-[#16476A] mt-1">
+                            {pasteStatus[item.id]}
+                          </div>
+                        )}
+                        {manualImageUrls[item.id] && (
+                          <div className="mt-2">
+                            <img
+                              src={manualImageUrls[item.id]}
+                              alt="Preview"
+                              className="max-h-32 rounded-lg border border-[#E0E0E0] object-contain bg-white"
+                              onError={() =>
+                                setManualImagePreviews((prev) => ({
+                                  ...prev,
+                                  [item.id]: 'error',
+                                }))
+                              }
+                            />
+                            {manualImagePreviews[item.id] === 'error' && (
+                              <div className="text-xs text-[#BF092F] mt-1">
+                                Preview bloqueado (CORS/403). Use upload manual.
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-4 flex flex-col gap-2">
+                        <label className="text-xs font-semibold text-[#16476A]">
+                          Colar imagem ou arrastar arquivo
+                        </label>
+                        <div
+                          className="min-h-[72px] rounded-xl border-2 border-dashed border-[#3B9797]/40 bg-[#F8FAFC] px-4 py-3 text-xs text-[#16476A] flex items-center justify-between gap-3"
+                          onPaste={(event) => handlePasteImageBox(item.id, event)}
+                          onDrop={(event) => handleDropImage(item.id, event)}
+                          onDragOver={handleDragOver}
+                        >
+                          <div>
+                            <p className="font-semibold">Ctrl+V para colar imagem</p>
+                            <p className="text-[11px] text-[#757575]">ou arraste o arquivo para cá</p>
+                          </div>
+                          <button
+                            onClick={() => document.getElementById(`upload-${item.id}`)?.click()}
+                            type="button"
+                            className="px-3 py-2 rounded-lg bg-[#3B9797] text-white text-xs font-semibold hover:opacity-90"
+                          >
+                            Selecionar arquivo
+                          </button>
+                          <input
+                            id={`upload-${item.id}`}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(event) => {
+                              const file = event.target.files?.[0] || null;
+                              if (file) approveUpload(item.id, file);
+                            }}
+                          />
+                        </div>
+                        {pasteStatus[item.id] && (
+                          <div className="text-xs text-[#16476A]">
+                            {pasteStatus[item.id]}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </section>

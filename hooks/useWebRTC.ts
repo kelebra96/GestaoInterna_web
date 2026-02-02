@@ -63,7 +63,9 @@ export const useWebRTC = ({ userId, conversationId, otherUserId }: UseWebRTCProp
 
   useEffect(() => {
     const signalingUrl = process.env.NEXT_PUBLIC_SIGNALING_SERVER_URL || 'http://localhost:3002';
+    const signalingPath = process.env.NEXT_PUBLIC_SIGNALING_SOCKET_PATH || '/socket.io';
     const socket = io(signalingUrl, {
+      path: signalingPath,
       transports: ['websocket'],
       reconnection: true,
     });

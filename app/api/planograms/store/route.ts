@@ -169,6 +169,10 @@ export async function POST(request: Request) {
     }));
 
     let adjustments: any[] = [];
+    const orgIdForPlanogram = store.company_id || basePlanogram.orgId || auth.orgId;
+    if (!orgIdForPlanogram) {
+      return NextResponse.json({ error: 'Organization not resolved for planogram' }, { status: 400 });
+    }
 
     // Auto-generate: remover produtos sem estoque
     if (autoGenerate) {
@@ -176,7 +180,7 @@ export async function POST(request: Request) {
         .from('inventory_snapshots')
         .select('product_id, quantity')
         .eq('store_id', storeId)
-        .eq('org_id', auth.orgId);
+        .eq('org_id', orgIdForPlanogram);
 
       const outOfStockProductIds = new Set(
         (inventoryData || [])
@@ -200,10 +204,12 @@ export async function POST(request: Request) {
 
     // Criar planograma de loja
     const now = new Date().toISOString();
-    const planogramStoreData = {
-      org_id: auth.orgId,
+    const planogramStoreData: Record<string, unknown> = {
+      org_id: orgIdForPlanogram,
+      company_id: orgIdForPlanogram,
       store_id: storeId,
       base_planogram_id: basePlanogramId,
+      base_id: basePlanogramId,
       name: `${basePlanogram.name} - ${store.name}`,
       status: 'draft',
       adjustments,
@@ -211,11 +217,44 @@ export async function POST(request: Request) {
       updated_at: now,
     };
 
-    const { data: planogramStore, error: planogramError } = await supabaseAdmin
-      .from('planogram_store')
-      .insert(planogramStoreData)
-      .select()
-      .single();
+    const insertPlanogramStore = async (payload: Record<string, unknown>) => {
+      return supabaseAdmin
+        .from('planogram_store')
+        .insert(payload)
+        .select()
+        .single();
+    };
+
+    let planogramStore: any;
+    let planogramError: any;
+    let payloadToInsert: Record<string, unknown> = { ...planogramStoreData };
+
+    const maxAttempts = Math.max(3, Object.keys(payloadToInsert).length);
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      ({ data: planogramStore, error: planogramError } = await insertPlanogramStore(payloadToInsert));
+      if (!planogramError) {
+        break;
+      }
+
+      if (planogramError?.code === '23514' && String(planogramError?.message || '').toLowerCase().includes('status')) {
+        payloadToInsert = { ...payloadToInsert, status: 'pending' };
+        continue;
+      }
+
+      if (planogramError?.code !== 'PGRST204') {
+        break;
+      }
+
+      const message = String(planogramError?.message || '');
+      const match = message.match(/'([^']+)' column/);
+      const missingColumn = match?.[1];
+      if (!missingColumn || !(missingColumn in payloadToInsert)) {
+        break;
+      }
+
+      const { [missingColumn]: _removed, ...rest } = payloadToInsert;
+      payloadToInsert = rest;
+    }
 
     if (planogramError) {
       console.error('[PlanogramStore] Error creating planogram:', planogramError);
@@ -235,12 +274,39 @@ export async function POST(request: Request) {
       updated_at: now,
     }));
 
+    const resultPlanogram = {
+      id: planogramStore.id,
+      orgId: planogramStore.org_id || planogramStore.company_id || orgIdForPlanogram,
+      storeId: planogramStore.store_id || storeId,
+      basePlanogramId: planogramStore.base_planogram_id || planogramStore.base_id || basePlanogramId,
+      name: planogramStore.name || `${basePlanogram.name} - ${store.name}`,
+      status: planogramStore.status || 'draft',
+      adjustments: planogramStore.adjustments || adjustments || [],
+      slots: [] as any[],
+      createdAt: planogramStore.created_at || now,
+      updatedAt: planogramStore.updated_at || now,
+    };
+
+    if (slotsDataToInsert.length === 0) {
+      return NextResponse.json({ planogram: resultPlanogram }, { status: 201 });
+    }
+
     const { data: createdSlotsData, error: slotsInsertError } = await supabaseAdmin
       .from('planogram_slots')
       .insert(slotsDataToInsert)
       .select();
 
     if (slotsInsertError) {
+      if (slotsInsertError.code === 'PGRST204') {
+        console.warn('[PlanogramStore] Slots table schema does not support store slots. Rolling back planogram_store.');
+        await supabaseAdmin
+          .from('planogram_store')
+          .delete()
+          .eq('id', planogramStore.id);
+        return NextResponse.json({
+          error: 'Slots table does not support store-specific slots. Run migration 006 to enable planogram_store_id.',
+        }, { status: 409 });
+      }
       console.error('[PlanogramStore] Error creating slots:', slotsInsertError);
       throw slotsInsertError;
     }
@@ -257,21 +323,19 @@ export async function POST(request: Request) {
     }));
 
     const result = {
-      id: planogramStore.id,
-      orgId: planogramStore.org_id,
-      storeId: planogramStore.store_id,
-      basePlanogramId: planogramStore.base_planogram_id,
-      name: planogramStore.name,
-      status: planogramStore.status,
-      adjustments: planogramStore.adjustments || [],
+      ...resultPlanogram,
       slots: createdSlots,
-      createdAt: planogramStore.created_at,
-      updatedAt: planogramStore.updated_at,
     };
 
     return NextResponse.json({ planogram: result }, { status: 201 });
   } catch (error) {
     console.error('Error creating store planogram:', error);
-    return NextResponse.json({ error: "An internal server error occurred" }, { status: 500 });
+    const err = error as any;
+    return NextResponse.json({
+      error: 'An internal server error occurred',
+      code: err?.code,
+      message: err?.message,
+      details: err?.details ?? null,
+    }, { status: 500 });
   }
 }
