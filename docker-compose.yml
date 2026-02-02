@@ -39,6 +39,33 @@ services:
       start_period: 40s
 
   # ==========================================
+  # WebRTC Signaling Server
+  # ==========================================
+  signaling:
+    image: node:20-alpine
+    container_name: myinventory-signaling
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "3002:3002"
+    environment:
+      SOCKET_PORT: 3002
+      SOCKET_HOST: 0.0.0.0
+      NODE_ENV: production
+    volumes:
+      - ./server-signaling.js:/app/server-signaling.js:ro
+      - ./package.json:/app/package.json:ro
+    command: >
+      sh -c "npm install express socket.io && node server-signaling.js"
+    networks:
+      - myinventory-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================
   # MongoDB (para Prisma/Planogramas/Analytics)
   # ==========================================
   mongodb:
@@ -75,6 +102,7 @@ services:
       - ./ssl:/etc/nginx/ssl:ro  # Certificados SSL
     depends_on:
       - app
+      - signaling
     networks:
       - myinventory-network
     healthcheck:

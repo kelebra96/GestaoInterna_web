@@ -74,21 +74,26 @@ io.on('connection', (socket) => {
   // Iniciar chamada
   socket.on('call-user', ({ to, offer, callType }) => {
     const toSocketId = userIdToSocketId.get(to); // Encontrar socketId a partir do userId
+    const callerData = users.get(socket.id);
+
     if (toSocketId) {
-      console.log(`📞 Chamada iniciada de ${socket.id} para ${to} (socket: ${toSocketId}), tipo: ${callType}`);
-      
+      console.log(`📞 Chamada iniciada de ${callerData?.userId || socket.id} para ${to} (socket: ${toSocketId}), tipo: ${callType}`);
+
       // Notificar o chamador com o socketId do destinatário
       socket.emit('call-initiated', { toSocketId });
 
       // Enviar a oferta para o destinatário
+      // IMPORTANTE: Inclui fromSocketId explicitamente para que o destinatário saiba para onde enviar a resposta
       socket.to(toSocketId).emit('incoming-call', {
-        from: socket.id,
+        from: callerData?.userId || socket.id,  // userId do chamador (para exibição)
+        fromSocketId: socket.id,                 // socketId do chamador (para roteamento da resposta)
         offer,
         callType,
-        caller: users.get(socket.id)
+        caller: callerData
       });
     } else {
       console.log(`⚠️ Usuário ${to} não encontrado para chamada.`);
+      console.log(`📋 Usuários online: ${Array.from(userIdToSocketId.keys()).join(', ')}`);
       socket.emit('user-unavailable'); // Notificar o chamador
     }
   });
@@ -153,7 +158,11 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.SOCKET_PORT || 3002;
-server.listen(PORT, () => {
+const HOST = process.env.SOCKET_HOST || '0.0.0.0';
+
+server.listen(PORT, HOST, () => {
   console.log(`🚀 Servidor de sinalização WebRTC rodando na porta ${PORT}`);
-  console.log(`📡 Listening on all interfaces (0.0.0.0:${PORT})`);
+  console.log(`📡 Listening on ${HOST}:${PORT}`);
+  console.log(`🌐 Produção: https://myinventory.com.br ou http://76.13.163.7:${PORT}`);
+  console.log(`🏠 Desenvolvimento: http://192.168.1.179:${PORT}`);
 });
