@@ -12,7 +12,10 @@
     "test:ar": "echo '\n🚀 Passo 1: Inicie o servidor com npm run dev em outro terminal\n🌐 Passo 2: Execute npm run tunnel\n📱 Passo 3: Acesse a URL HTTPS gerada + /ar-measurement no iPhone Safari\n'",
     "fcm-worker": "dotenv -e .env.local -- tsx workers/fcm-worker.ts",
     "fcm-worker:dev": "dotenv -e .env.local -- tsx watch workers/fcm-worker.ts",
-    "monitor:process-queued": "node scripts/process-queued-tests.js"
+    "monitor:process-queued": "node scripts/process-queued-tests.js",
+    "image-worker": "dotenv -e .env.local -- tsx scripts/image-worker.ts",
+    "image-worker:dev": "dotenv -e .env.local -- tsx watch scripts/image-worker.ts",
+    "image-backfill": "curl -X POST http://localhost:3000/api/images/backfill?limit=100"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -55,6 +58,7 @@
     "react-dom": "19.2.0",
     "react-icons": "^5.5.0",
     "recharts": "^3.7.0",
+    "sharp": "^0.33.5",
     "simple-peer": "^9.11.1",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",

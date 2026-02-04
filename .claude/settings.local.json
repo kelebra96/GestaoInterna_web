@@ -67,7 +67,8 @@
       "Bash([ -f serviceAccountKey.json ])",
       "Bash(if exist .next rmdir /s /q .next)",
       "Bash(wc -l \"D:\\\\myinventory\\\\WEB\\\\app\"/**/*.*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const devBypass = process.env.NODE_ENV !== 'production';
   if (!devBypass) {
     const auth = await getAuthFromRequest(request);
-    if (!auth || ![Role.super_admin, Role.admin_rede].includes(auth.role)) {
+    if (!auth || (auth.role !== Role.super_admin && auth.role !== Role.admin_rede)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
   }
@@ -22,15 +22,17 @@ export async function GET(request: Request) {
   }
 
   try {
-    const urls = await searchImages('bing', query);
+    // searchImages é um placeholder por enquanto
+    const urls = await searchImages();
     return NextResponse.json({
       query,
       count: urls.length,
       sample: urls.slice(0, 5),
+      message: 'Search API não implementada ainda',
     });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error?.message || 'Erro ao consultar Bing' },
+      { error: error?.message || 'Erro ao consultar API' },
       { status: 500 }
     );
   }

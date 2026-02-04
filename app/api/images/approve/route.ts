@@ -2,22 +2,22 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getAuthFromRequest } from '@/lib/helpers/auth';
 import { Role } from '@prisma/client';
-import { persistImageToSupabaseStorage } from '@/lib/images/pipeline';
+import {
+  downloadAndValidateImage,
+  persistImageToSupabaseStorage,
+} from '@/lib/images/pipeline';
 
-async function downloadImageBytes(url: string) {
-  const response = await fetch(url, { cache: 'no-store' });
-  if (!response.ok) throw new Error(`Falha ao baixar imagem: ${response.status}`);
-  const contentType = response.headers.get('content-type') || 'image/jpeg';
-  if (!contentType.startsWith('image/')) {
-    throw new Error(`Conteúdo inválido (content-type: ${contentType})`);
-  }
-  const bytes = Buffer.from(await response.arrayBuffer());
-  return { bytes, contentType };
-}
-
+/**
+ * POST /api/images/approve
+ *
+ * Aprova uma imagem candidata por URL.
+ * Baixa, valida, gera thumbnail e persiste no Storage.
+ *
+ * Body: { productId: string, imageUrl: string }
+ */
 export async function POST(request: Request) {
   const auth = await getAuthFromRequest(request);
-  if (!auth || ![Role.super_admin, Role.admin_rede].includes(auth.role)) {
+  if (!auth || (auth.role !== Role.super_admin && auth.role !== Role.admin_rede)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -26,28 +26,61 @@ export async function POST(request: Request) {
   const imageUrl = body?.imageUrl;
 
   if (!productId || !imageUrl) {
-    return NextResponse.json({ error: 'productId e imageUrl são obrigatórios' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'productId e imageUrl são obrigatórios' },
+      { status: 400 }
+    );
   }
 
-  const { bytes, contentType } = await downloadImageBytes(imageUrl);
-  const stored = await persistImageToSupabaseStorage(productId, bytes, contentType);
+  try {
+    // 1. Download e validação
+    const { bytes, contentType, metadata } = await downloadAndValidateImage(imageUrl);
 
-  const now = new Date().toISOString();
-  const { error } = await supabaseAdmin
-    .from('produtos')
-    .update({
-      image_url: stored.publicUrl,
-      image_status: 'ok',
-      image_source: 'manual',
-      image_confidence: 1,
-      image_updated_at: now,
-      updated_at: now,
-    })
-    .eq('id', productId);
+    // 2. Persist com thumbnail
+    const stored = await persistImageToSupabaseStorage(productId, bytes, contentType);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    // 3. Atualizar produto
+    const now = new Date().toISOString();
+    const { error } = await supabaseAdmin
+      .from('products')
+      .update({
+        image_url: stored.publicUrl,
+        image_thumb_url: stored.thumbUrl,
+        image_status: 'ok',
+        image_source: 'manual',
+        image_confidence: 1,
+        image_width: metadata.width,
+        image_height: metadata.height,
+        image_bytes: metadata.bytes,
+        image_mime: metadata.mime,
+        image_updated_at: now,
+        updated_at: now,
+        image_ai_reason: `Aprovado manualmente por ${auth.userId}`,
+      })
+      .eq('id', productId);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // 4. Marcar job como done (se existir)
+    await supabaseAdmin
+      .from('image_jobs')
+      .update({ status: 'done', completed_at: now, updated_at: now })
+      .eq('product_id', productId)
+      .in('status', ['queued', 'running', 'needs_review']);
+
+    return NextResponse.json({
+      success: true,
+      imageUrl: stored.publicUrl,
+      thumbUrl: stored.thumbUrl,
+      metadata,
+    });
+  } catch (error: any) {
+    console.error('[approve] Erro:', error);
+    return NextResponse.json(
+      { error: error.message || 'Erro ao processar imagem' },
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json({ success: true, imageUrl: stored.publicUrl });
 }

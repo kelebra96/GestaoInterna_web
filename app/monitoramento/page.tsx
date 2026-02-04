@@ -327,7 +327,7 @@ export default function MonitoramentoPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result?.error || 'Erro ao enviar imagem');
       await fetchImageReview();
-      setManualImageFiles((prev) => ({ ...prev, [productId]: null }));
+      setManualImagePreviews((prev) => ({ ...prev, [productId]: '' }));
       setPasteStatus((prev) => ({ ...prev, [productId]: 'Imagem colada enviada com sucesso.' }));
     } catch (err: any) {
       setPasteStatus((prev) => ({ ...prev, [productId]: err.message || 'Erro ao enviar imagem' }));

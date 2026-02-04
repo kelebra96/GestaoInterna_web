@@ -1,0 +1,45 @@
+[Unit]
+Description=Image Pipeline Worker - MyInventory
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/myinventory
+
+# Carrega variáveis de ambiente
+EnvironmentFile=/var/www/myinventory/.env.production
+
+# Configuração do worker
+Environment=NODE_ENV=production
+Environment=IMAGE_WORKER_CONCURRENCY=3
+Environment=IMAGE_WORKER_POLL_INTERVAL=5000
+Environment=IMAGE_WORKER_ID=hostinger-worker-1
+
+# Comando de execução
+ExecStart=/usr/bin/npx tsx scripts/image-worker.ts
+
+# Restart automático
+Restart=always
+RestartSec=10
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+# Logs
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=image-worker
+
+# Limites de recursos
+MemoryLimit=512M
+CPUQuota=50%
+
+# Graceful shutdown
+TimeoutStopSec=60
+KillMode=mixed
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

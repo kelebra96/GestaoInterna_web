@@ -1,0 +1,17 @@
+[Unit]
+Description=Run Image Worker periodically
+Requires=image-worker.service
+
+[Timer]
+# Executa a cada 5 minutos
+OnBootSec=1min
+OnUnitActiveSec=5min
+
+# Adiciona randomização para evitar picos
+RandomizedDelaySec=30
+
+# Persiste timer entre reboots
+Persistent=true
+
+[Install]
+WantedBy=timers.target

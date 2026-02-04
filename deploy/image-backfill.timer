@@ -1,0 +1,16 @@
+[Unit]
+Description=Run Image Backfill hourly
+Requires=image-backfill.service
+
+[Timer]
+# Executa a cada hora
+OnCalendar=hourly
+
+# Adiciona randomização
+RandomizedDelaySec=5min
+
+# Persiste timer entre reboots
+Persistent=true
+
+[Install]
+WantedBy=timers.target

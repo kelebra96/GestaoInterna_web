@@ -1,0 +1,25 @@
+[Unit]
+Description=Image Backfill Job Enqueue - MyInventory
+After=network.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/myinventory
+
+# Carrega variáveis de ambiente
+EnvironmentFile=/var/www/myinventory/.env.production
+
+Environment=NODE_ENV=production
+
+# Enfileira até 200 produtos por execução
+ExecStart=/usr/bin/curl -X POST "http://localhost:3000/api/images/backfill?limit=200" \
+  -H "Authorization: Bearer ${ADMIN_API_TOKEN}" \
+  -H "Content-Type: application/json"
+
+# Timeout de 30 segundos (apenas enfileira, não processa)
+TimeoutStartSec=30
+
+[Install]
+WantedBy=multi-user.target
