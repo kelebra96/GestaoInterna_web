@@ -6,8 +6,17 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const cors = require('cors');
 
 const app = express();
+
+// Habilitar CORS para todas as rotas Express
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -164,5 +173,5 @@ server.listen(PORT, HOST, () => {
   console.log(`🚀 Servidor de sinalização WebRTC rodando na porta ${PORT}`);
   console.log(`📡 Listening on ${HOST}:${PORT}`);
   console.log(`🌐 Produção: https://myinventory.com.br ou http://76.13.163.7:${PORT}`);
-  console.log(`🏠 Desenvolvimento: http://192.168.1.179:${PORT}`);
+  console.log(`🏠 Desenvolvimento: http://192.168.1.104:${PORT}`);
 });

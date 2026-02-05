@@ -13,7 +13,9 @@ type SolicitacaoDTO = {
   id: string;
   status: Status;
   createdAt: string;
+  userId: string | null;
   userName: string;
+  storeId: string | null;
   storeName: string;
   companyId: string | null;
   companyName?: string;
@@ -185,7 +187,9 @@ export async function GET(request: Request) {
         id: data.id,
         status,
         createdAt: createdAt.toISOString(),
+        userId: data.created_by || null,
         userName,
+        storeId: data.store_id || null,
         storeName,
         companyId,
         companyName,

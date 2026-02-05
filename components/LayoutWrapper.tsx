@@ -233,8 +233,14 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!user?.uid) return;
-    const signalingUrl = process.env.NEXT_PUBLIC_SIGNALING_SERVER_URL || 'http://localhost:3002';
+
+    // Usar configuração do localStorage se disponível, senão usar variável de ambiente
+    const savedSignalingUrl = typeof window !== 'undefined' ? localStorage.getItem('pref.signalingServerUrl') : null;
+    const signalingUrl = savedSignalingUrl || process.env.NEXT_PUBLIC_SIGNALING_SERVER_URL || 'http://localhost:3002';
     const signalingPath = process.env.NEXT_PUBLIC_SIGNALING_SOCKET_PATH || '/socket.io';
+
+    console.log('🔌 [Signaling] Conectando ao servidor:', signalingUrl);
+
     const socket = io(signalingUrl, {
       path: signalingPath,
       transports: ['websocket'],
@@ -243,7 +249,13 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
     socketRef.current = socket;
 
     socket.on('connect', () => {
+      console.log('🔌 [Signaling] Conectado com ID:', socket.id);
       socket.emit('register', { userId: user.uid, conversationId: 'global' });
+      console.log('👤 [Signaling] Usuário registrado:', user.uid);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('🔌 [Signaling] Erro de conexão:', error.message);
     });
 
     socket.on('incoming-call', ({ callType, caller }) => {

@@ -68,7 +68,9 @@
       "Bash(if exist .next rmdir /s /q .next)",
       "Bash(wc -l \"D:\\\\myinventory\\\\WEB\\\\app\"/**/*.*)",
       "Bash(wc:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(ipconfig:*)",
+      "Bash(del \"D:\\\\myinventory\\\\WEB\\\\hooks\\\\useSignalingPresence.ts\")"
     ],
     "deny": [],
     "ask": []

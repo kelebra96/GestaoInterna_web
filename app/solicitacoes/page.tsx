@@ -32,7 +32,9 @@ import { Solicitacao as SolicitacaoType } from '@/lib/types/business';
 type Status = 'pending' | 'batched' | 'closed';
 
 interface Solicitacao extends SolicitacaoType {
+  userId?: string | null;
   userName: string;
+  storeId?: string | null;
   storeName: string;
   companyName?: string;
   items?: number;
@@ -66,12 +68,63 @@ export default function SolicitacoesPage() {
   const [updating, setUpdating] = useState<Record<string, boolean>>({});
   const [updateError, setUpdateError] = useState<string | null>(null);
 
+  // Data for filters
+  const [buyers, setBuyers] = useState<{ id: string; name: string }[]>([]);
+  const [stores, setStores] = useState<{ id: string; name: string }[]>([]);
+
   // UI state
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<Status | 'all'>('all');
   const [period, setPeriod] = useState<'7' | '30' | '90' | 'all'>('30');
+  const [selectedBuyer, setSelectedBuyer] = useState<string>('all');
+  const [selectedStore, setSelectedStore] = useState<string>('all');
   const [page, setPage] = useState(1);
   const perPage = 10;
+
+  const fetchStores = async () => {
+    try {
+      if (!firebaseUser) return;
+
+      const token = await firebaseUser.getIdToken(true);
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      };
+
+      const storesRes = await fetch('/api/lojas', { headers });
+
+      if (storesRes.ok) {
+        const storesJson = await storesRes.json();
+        const storesList = (storesJson.lojas || [])
+          .filter((s: any) => s.active !== false)
+          .map((s: any) => ({ id: s.id, name: s.name }))
+          .sort((a: any, b: any) => a.name.localeCompare(b.name, 'pt-BR'));
+        setStores(storesList);
+      }
+    } catch (e) {
+      console.error('Erro ao carregar lojas:', e);
+    }
+  };
+
+  // Extract buyers from solicitacoes data
+  useEffect(() => {
+    if (data.length > 0) {
+      console.log('📊 [Solicitações] Extraindo compradores dos dados:', data.map(s => ({ userId: s.userId, userName: s.userName })));
+
+      const buyersMap = new Map<string, string>();
+      data.forEach((s) => {
+        if (s.userId && s.userName && !buyersMap.has(s.userId)) {
+          buyersMap.set(s.userId, s.userName);
+        }
+      });
+      const extractedBuyers = Array.from(buyersMap.entries())
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
+      console.log('👥 [Solicitações] Compradores extraídos:', extractedBuyers);
+      setBuyers(extractedBuyers);
+    }
+  }, [data]);
 
   const fetchData = async () => {
     try {
@@ -180,6 +233,7 @@ export default function SolicitacoesPage() {
   useEffect(() => {
     if (firebaseUser) {
       fetchData();
+      fetchStores();
     }
   }, [firebaseUser]);
 
@@ -198,6 +252,8 @@ export default function SolicitacoesPage() {
 
     return data
       .filter((s) => (status === 'all' ? true : s.status === status))
+      .filter((s) => (selectedBuyer === 'all' ? true : s.userId === selectedBuyer))
+      .filter((s) => (selectedStore === 'all' ? true : s.storeId === selectedStore))
       .filter((s) => {
         if (!q) return true;
         return (
@@ -219,7 +275,7 @@ export default function SolicitacoesPage() {
         const dateB = new Date(b.createdAt);
         return dateB.getTime() - dateA.getTime();
       });
-  }, [data, query, status, period]);
+  }, [data, query, status, period, selectedBuyer, selectedStore]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const current = filtered.slice((page - 1) * perPage, page * perPage);
@@ -252,7 +308,7 @@ export default function SolicitacoesPage() {
   useEffect(() => {
     // reset page when filters change
     setPage(1);
-  }, [query, status, period]);
+  }, [query, status, period, selectedBuyer, selectedStore]);
 
   return (
     <div className="min-h-screen bg-[#F5F5F5]">
@@ -327,70 +383,126 @@ export default function SolicitacoesPage() {
           </div>
 
           <div className="p-6">
-            <div className="flex flex-col lg:flex-row gap-4">
-              {/* Search */}
-              <div className="flex-1">
-                <label className="block text-sm font-bold text-[#212121] mb-2">Buscar</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#757575]">
-                    <MdSearch className="w-5 h-5" />
-                  </span>
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="ID, usuário, loja ou empresa..."
-                    className="w-full pl-12 pr-4 py-3 border-2 border-[#BFC7C9] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all hover:border-[#3B9797]"
-                  />
+            <div className="flex flex-col gap-4">
+              {/* First Row: Search, Buyer, Store */}
+              <div className="flex flex-col lg:flex-row gap-4">
+                {/* Search */}
+                <div className="flex-1">
+                  <label className="block text-sm font-bold text-[#212121] mb-2">Buscar</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#757575]">
+                      <MdSearch className="w-5 h-5" />
+                    </span>
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="ID, usuário, loja ou empresa..."
+                      className="w-full pl-12 pr-4 py-3 border-2 border-[#BFC7C9] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all hover:border-[#3B9797]"
+                    />
+                  </div>
+                </div>
+
+                {/* Buyer Filter */}
+                <div className="lg:w-64">
+                  <label className="block text-sm font-bold text-[#212121] mb-2">Comprador</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#757575]">
+                      <MdPerson className="w-5 h-5" />
+                    </span>
+                    <select
+                      value={selectedBuyer}
+                      onChange={(e) => setSelectedBuyer(e.target.value)}
+                      className="w-full pl-12 pr-4 py-3 border-2 border-[#BFC7C9] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all hover:border-[#3B9797] appearance-none cursor-pointer"
+                    >
+                      <option value="all">Todos os compradores</option>
+                      {buyers.map((buyer) => (
+                        <option key={buyer.id} value={buyer.id}>
+                          {buyer.name}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#757575] pointer-events-none">
+                      <MdFilterList className="w-5 h-5" />
+                    </span>
+                  </div>
+                </div>
+
+                {/* Store Filter */}
+                <div className="lg:w-64">
+                  <label className="block text-sm font-bold text-[#212121] mb-2">Loja</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#757575]">
+                      <MdStore className="w-5 h-5" />
+                    </span>
+                    <select
+                      value={selectedStore}
+                      onChange={(e) => setSelectedStore(e.target.value)}
+                      className="w-full pl-12 pr-4 py-3 border-2 border-[#BFC7C9] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all hover:border-[#3B9797] appearance-none cursor-pointer"
+                    >
+                      <option value="all">Todas as lojas</option>
+                      {stores.map((store) => (
+                        <option key={store.id} value={store.id}>
+                          {store.name}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#757575] pointer-events-none">
+                      <MdFilterList className="w-5 h-5" />
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Status Filter */}
-              <div>
-                <label className="block text-sm font-bold text-[#212121] mb-2">Status</label>
-                <div className="flex gap-2 flex-wrap">
-                  {(['all', 'pending', 'batched', 'closed'] as const).map((st) => (
-                    <button
-                      key={st}
-                      type="button"
-                      onClick={() => {
-                        console.log('🔘 [Solicitações] Status clicado:', st);
-                        setStatus(st as any);
-                      }}
-                      className={`inline-flex items-center gap-2 px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all duration-300 ${
-                        (status === st)
-                          ? 'bg-gradient-to-r from-[#16476A] to-[#3B9797] text-white border-[#16476A] shadow-lg scale-105'
-                          : 'bg-white text-[#212121] border-[#E0E0E0] hover:bg-[#E0E7EF] hover:border-[#3B9797]/30'
-                      }`}
-                      title={st === 'all' ? 'Todos' : statusLabels[st as Status]}
-                    >
-                      {st !== 'all' && statusIcon[st as Status]}
-                      {st === 'all' ? 'Todos' : statusLabels[st as Status]}
-                    </button>
-                  ))}
+              {/* Second Row: Status and Period */}
+              <div className="flex flex-col lg:flex-row gap-4">
+                {/* Status Filter */}
+                <div>
+                  <label className="block text-sm font-bold text-[#212121] mb-2">Status</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {(['all', 'pending', 'batched', 'closed'] as const).map((st) => (
+                      <button
+                        key={st}
+                        type="button"
+                        onClick={() => {
+                          console.log('🔘 [Solicitações] Status clicado:', st);
+                          setStatus(st as any);
+                        }}
+                        className={`inline-flex items-center gap-2 px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all duration-300 ${
+                          (status === st)
+                            ? 'bg-gradient-to-r from-[#16476A] to-[#3B9797] text-white border-[#16476A] shadow-lg scale-105'
+                            : 'bg-white text-[#212121] border-[#E0E0E0] hover:bg-[#E0E7EF] hover:border-[#3B9797]/30'
+                        }`}
+                        title={st === 'all' ? 'Todos' : statusLabels[st as Status]}
+                      >
+                        {st !== 'all' && statusIcon[st as Status]}
+                        {st === 'all' ? 'Todos' : statusLabels[st as Status]}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* Period Filter */}
-              <div>
-                <label className="block text-sm font-bold text-[#212121] mb-2">Período</label>
-                <div className="flex gap-2 flex-wrap">
-                  {(['7', '30', '90', 'all'] as const).map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => {
-                        console.log('🔘 [Solicitações] Período clicado:', p);
-                        setPeriod(p);
-                      }}
-                      className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all duration-300 ${
-                        (period === p)
-                          ? 'bg-[#16476A] text-white border-[#16476A] shadow-lg'
-                          : 'bg-white text-[#212121] border-[#E0E0E0] hover:bg-[#F5F5F5] hover:border-[#3B9797]/30'
-                      }`}
-                    >
-                      {p === 'all' ? 'Tudo' : `${p}d`}
-                    </button>
-                  ))}
+                {/* Period Filter */}
+                <div>
+                  <label className="block text-sm font-bold text-[#212121] mb-2">Período</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {(['7', '30', '90', 'all'] as const).map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => {
+                          console.log('🔘 [Solicitações] Período clicado:', p);
+                          setPeriod(p);
+                        }}
+                        className={`px-4 py-3 rounded-xl border-2 text-sm font-bold transition-all duration-300 ${
+                          (period === p)
+                            ? 'bg-[#16476A] text-white border-[#16476A] shadow-lg'
+                            : 'bg-white text-[#212121] border-[#E0E0E0] hover:bg-[#F5F5F5] hover:border-[#3B9797]/30'
+                        }`}
+                      >
+                        {p === 'all' ? 'Tudo' : `${p}d`}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

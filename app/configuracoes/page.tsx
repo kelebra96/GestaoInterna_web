@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import ClearDBModal from '@/components/configuracoes/ClearDBModal';
-import { Settings as SettingsIcon, Bell, Sun, Moon, Monitor, RefreshCw, Database, Server, Users, Shield, AlertTriangle, Save, RotateCcw, Check, X } from 'lucide-react';
+import { Settings as SettingsIcon, Bell, Sun, Moon, Monitor, RefreshCw, Database, Server, Users, Shield, AlertTriangle, Save, RotateCcw, Check, X, Phone, Wifi, WifiOff } from 'lucide-react';
 
 type Theme = 'system' | 'light' | 'dark';
 type Period = 7 | 30 | 90 | 0; // 0 = Tudo
@@ -22,6 +22,13 @@ export default function ConfiguracoesPage() {
   const [migrationRunning, setMigrationRunning] = useState(false);
   const [migrationMessage, setMigrationMessage] = useState<string | null>(null);
   const [migrationStats, setMigrationStats] = useState<{ inserted: number; updated: number; skipped: number; total: number } | null>(null);
+
+  // Servidor de Signaling WebRTC
+  const [signalingHost, setSignalingHost] = useState('');
+  const [signalingPort, setSignalingPort] = useState('3002');
+  const [signalingProtocol, setSignalingProtocol] = useState<'http' | 'https'>('http');
+  const [signalingStatus, setSignalingStatus] = useState<'unknown' | 'online' | 'offline'>('unknown');
+  const [testingConnection, setTestingConnection] = useState(false);
 
   useEffect(() => {
     try {
@@ -52,6 +59,28 @@ export default function ConfiguracoesPage() {
             setAllowUserRegistration(data.allowUserRegistration);
           }
         });
+
+      // Carregar configuração do servidor de signaling
+      const savedSignalingUrl = localStorage.getItem('pref.signalingServerUrl');
+      if (savedSignalingUrl) {
+        try {
+          const url = new URL(savedSignalingUrl);
+          setSignalingProtocol(url.protocol === 'https:' ? 'https' : 'http');
+          setSignalingHost(url.hostname);
+          setSignalingPort(url.port || (url.protocol === 'https:' ? '443' : '80'));
+        } catch {
+          // URL inválida, usar padrão
+        }
+      } else {
+        // Usar valor da variável de ambiente como padrão
+        const envUrl = process.env.NEXT_PUBLIC_SIGNALING_SERVER_URL || 'http://localhost:3002';
+        try {
+          const url = new URL(envUrl);
+          setSignalingProtocol(url.protocol === 'https:' ? 'https' : 'http');
+          setSignalingHost(url.hostname);
+          setSignalingPort(url.port || (url.protocol === 'https:' ? '443' : '3002'));
+        } catch {}
+      }
 
     } catch {}
   }, []);
@@ -156,6 +185,83 @@ export default function ConfiguracoesPage() {
       setClearingDB(false);
       setTimeout(() => setToast(null), 4000);
     }
+  };
+
+  const getSignalingUrl = () => {
+    if (!signalingHost) return '';
+    return `${signalingProtocol}://${signalingHost}:${signalingPort}`;
+  };
+
+  const testSignalingConnection = async () => {
+    const url = getSignalingUrl();
+    if (!url) {
+      setToast({ type: 'error', message: 'Configure o host do servidor' });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+
+    setTestingConnection(true);
+    setSignalingStatus('unknown');
+
+    try {
+      // Usa API proxy para evitar problemas de CORS e Mixed Content (HTTPS -> HTTP)
+      const res = await fetch(`/api/signaling/health?url=${encodeURIComponent(url)}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setSignalingStatus('online');
+        setToast({
+          type: 'success',
+          message: `Servidor online! ${data.usersOnline || 0} usuário(s) conectado(s)`,
+        });
+      } else {
+        setSignalingStatus('offline');
+        setToast({ type: 'error', message: data.error || 'Servidor não respondeu corretamente' });
+      }
+    } catch (error: any) {
+      console.error('Erro ao testar conexão:', error);
+      setSignalingStatus('offline');
+      setToast({ type: 'error', message: 'Erro ao testar conexão com o servidor' });
+    } finally {
+      setTestingConnection(false);
+      setTimeout(() => setToast(null), 4000);
+    }
+  };
+
+  const saveSignalingConfig = () => {
+    const url = getSignalingUrl();
+    if (!url || !signalingHost) {
+      setToast({ type: 'error', message: 'Configure o host do servidor' });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
+
+    localStorage.setItem('pref.signalingServerUrl', url);
+    setToast({
+      type: 'success',
+      message: 'Configuração salva! Recarregue a página para aplicar.',
+    });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const resetSignalingConfig = () => {
+    localStorage.removeItem('pref.signalingServerUrl');
+    const envUrl = process.env.NEXT_PUBLIC_SIGNALING_SERVER_URL || 'http://localhost:3002';
+    try {
+      const url = new URL(envUrl);
+      setSignalingProtocol(url.protocol === 'https:' ? 'https' : 'http');
+      setSignalingHost(url.hostname);
+      setSignalingPort(url.port || '3002');
+    } catch {}
+    setSignalingStatus('unknown');
+    setToast({ type: 'success', message: 'Configuração restaurada para o padrão' });
+    setTimeout(() => setToast(null), 3000);
   };
 
   const handleMigrateProducts = async () => {
@@ -359,6 +465,135 @@ export default function ConfiguracoesPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Servidor de Signaling WebRTC */}
+          <div className="bg-white rounded-2xl border border-[#E0E0E0] shadow-xl overflow-hidden">
+            <div className="bg-gradient-to-r from-[#3B9797] to-[#2c7a7a] px-6 py-4">
+              <div className="flex items-center gap-3">
+                <Phone className="w-5 h-5 text-white" />
+                <h2 className="text-lg font-bold text-white">Servidor de Chamadas (WebRTC)</h2>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-[#757575]">
+                Configure o servidor de sinalização para chamadas de voz e vídeo. Isso permite testar em diferentes ambientes sem precisar alterar variáveis de ambiente.
+              </p>
+
+              {/* Status do servidor */}
+              <div className={`flex items-center gap-3 p-4 rounded-xl border-2 ${
+                signalingStatus === 'online'
+                  ? 'bg-green-50 border-green-200'
+                  : signalingStatus === 'offline'
+                  ? 'bg-red-50 border-red-200'
+                  : 'bg-gray-50 border-gray-200'
+              }`}>
+                {signalingStatus === 'online' ? (
+                  <Wifi className="w-5 h-5 text-green-600" />
+                ) : signalingStatus === 'offline' ? (
+                  <WifiOff className="w-5 h-5 text-red-600" />
+                ) : (
+                  <Server className="w-5 h-5 text-gray-400" />
+                )}
+                <div>
+                  <p className={`font-bold text-sm ${
+                    signalingStatus === 'online'
+                      ? 'text-green-700'
+                      : signalingStatus === 'offline'
+                      ? 'text-red-700'
+                      : 'text-gray-600'
+                  }`}>
+                    {signalingStatus === 'online'
+                      ? 'Servidor Online'
+                      : signalingStatus === 'offline'
+                      ? 'Servidor Offline'
+                      : 'Status Desconhecido'}
+                  </p>
+                  <p className="text-xs text-[#757575]">
+                    {getSignalingUrl() || 'Nenhum servidor configurado'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Campos de configuração */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Protocolo */}
+                <div>
+                  <label className="block text-sm font-bold text-[#757575] mb-2">Protocolo</label>
+                  <select
+                    value={signalingProtocol}
+                    onChange={(e) => setSignalingProtocol(e.target.value as 'http' | 'https')}
+                    className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B9797]/30 focus:border-[#3B9797] transition-all font-medium"
+                  >
+                    <option value="http">HTTP</option>
+                    <option value="https">HTTPS</option>
+                  </select>
+                </div>
+
+                {/* Host/IP */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-bold text-[#757575] mb-2">Host / IP</label>
+                  <input
+                    type="text"
+                    value={signalingHost}
+                    onChange={(e) => setSignalingHost(e.target.value)}
+                    placeholder="ex: 192.168.1.104 ou meuservidor.com"
+                    className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B9797]/30 focus:border-[#3B9797] transition-all font-medium"
+                  />
+                </div>
+
+                {/* Porta */}
+                <div>
+                  <label className="block text-sm font-bold text-[#757575] mb-2">Porta</label>
+                  <input
+                    type="text"
+                    value={signalingPort}
+                    onChange={(e) => setSignalingPort(e.target.value.replace(/\D/g, ''))}
+                    placeholder="3002"
+                    className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B9797]/30 focus:border-[#3B9797] transition-all font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* Botões de ação */}
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={testSignalingConnection}
+                  disabled={testingConnection || !signalingHost}
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold shadow-lg transition-all duration-300 hover:scale-105 bg-gradient-to-r from-[#16476A] to-[#1F53A2] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {testingConnection ? (
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Wifi className="w-5 h-5" />
+                  )}
+                  {testingConnection ? 'Testando...' : 'Testar Conexão'}
+                </button>
+
+                <button
+                  onClick={saveSignalingConfig}
+                  disabled={!signalingHost}
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold shadow-lg transition-all duration-300 hover:scale-105 bg-gradient-to-r from-[#3B9797] to-[#2c7a7a] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="w-5 h-5" />
+                  Salvar Configuração
+                </button>
+
+                <button
+                  onClick={resetSignalingConfig}
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold border-2 border-[#E0E0E0] text-[#757575] hover:bg-[#F5F5F5] transition-all duration-300"
+                >
+                  <RotateCcw className="w-5 h-5" />
+                  Restaurar Padrão
+                </button>
+              </div>
+
+              <div className="p-4 bg-[#F8F9FA] rounded-xl border border-[#E0E0E0]">
+                <p className="text-sm text-[#757575] leading-relaxed">
+                  <strong className="text-[#3B9797]">Dica:</strong> Após salvar a configuração, recarregue a página (F5) para que as alterações sejam aplicadas. A configuração é salva localmente no navegador.
+                </p>
+              </div>
             </div>
           </div>
 

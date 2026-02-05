@@ -62,8 +62,13 @@ export const useWebRTC = ({ userId, conversationId, otherUserId }: UseWebRTCProp
   }, []);
 
   useEffect(() => {
-    const signalingUrl = process.env.NEXT_PUBLIC_SIGNALING_SERVER_URL || 'http://localhost:3002';
+    // Usar configuração do localStorage se disponível, senão usar variável de ambiente
+    const savedSignalingUrl = typeof window !== 'undefined' ? localStorage.getItem('pref.signalingServerUrl') : null;
+    const signalingUrl = savedSignalingUrl || process.env.NEXT_PUBLIC_SIGNALING_SERVER_URL || 'http://localhost:3002';
     const signalingPath = process.env.NEXT_PUBLIC_SIGNALING_SOCKET_PATH || '/socket.io';
+
+    console.log('🔌 [WebRTC] Conectando ao servidor:', signalingUrl);
+
     const socket = io(signalingUrl, {
       path: signalingPath,
       transports: ['websocket'],
