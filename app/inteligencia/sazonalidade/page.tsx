@@ -49,7 +49,7 @@ export default function SazonalidadePage() {
     eventName: '',
     eventType: 'promotion' as 'holiday' | 'promotion' | 'season' | 'custom',
     eventDate: '',
-    impactMultiplier: 1.2,
+    impactFactor: 1.2,
   });
 
   useEffect(() => {
@@ -66,8 +66,8 @@ export default function SazonalidadePage() {
       eventName: newEvent.eventName,
       eventType: newEvent.eventType,
       eventDate: new Date(newEvent.eventDate),
-      impactMultiplier: newEvent.impactMultiplier,
-      isRecurring: false,
+      impactFactor: newEvent.impactFactor,
+      recurrence: 'none',
     });
 
     setShowCreateModal(false);
@@ -75,7 +75,7 @@ export default function SazonalidadePage() {
       eventName: '',
       eventType: 'promotion',
       eventDate: '',
-      impactMultiplier: 1.2,
+      impactFactor: 1.2,
     });
   };
 
@@ -146,15 +146,15 @@ export default function SazonalidadePage() {
               </div>
               <div>
                 <label className="block text-sm font-bold text-[#212121] mb-2">
-                  Multiplicador de Impacto: {newEvent.impactMultiplier.toFixed(1)}x
+                  Multiplicador de Impacto: {newEvent.impactFactor.toFixed(1)}x
                 </label>
                 <input
                   type="range"
                   min="0.5"
                   max="3"
                   step="0.1"
-                  value={newEvent.impactMultiplier}
-                  onChange={(e) => setNewEvent({ ...newEvent, impactMultiplier: parseFloat(e.target.value) })}
+                  value={newEvent.impactFactor}
+                  onChange={(e) => setNewEvent({ ...newEvent, impactFactor: parseFloat(e.target.value) })}
                   className="w-full h-2 bg-[#E0E0E0] rounded-lg appearance-none cursor-pointer accent-[#3B9797]"
                 />
               </div>
@@ -337,7 +337,7 @@ export default function SazonalidadePage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-[#3B9797]">{event.impactMultiplier?.toFixed(1)}x</p>
+                        <p className="text-lg font-bold text-[#3B9797]">{event.impactFactor?.toFixed(1)}x</p>
                         <p className="text-xs text-[#757575]">impacto</p>
                       </div>
                     </div>

@@ -44,10 +44,10 @@ next-env.d.ts
 /public/uploads
 
 /lib/generated/prisma
-# Windows reserved device names
-nul
-con
-prn
-aux
-lpt*
-com*
+# Windows reserved device names (case insensitive patterns)
+[Nn][Uu][Ll]
+[Cc][Oo][Nn]
+[Pp][Rr][Nn]
+[Aa][Uu][Xx]
+[Ll][Pp][Tt][0-9]
+[Cc][Oo][Mm][0-9]

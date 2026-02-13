@@ -256,8 +256,8 @@ class PredictionService {
     const membersPerCluster = Math.ceil(entityData.length / numClusters);
 
     // Criar clusters e atribuir membros
-    const clusters = [];
-    const clusterMembers = [];
+    const clusters: Record<string, unknown>[] = [];
+    const clusterMembers: Record<string, unknown>[] = [];
 
     for (let i = 0; i < Math.min(numClusters, clusterLabels.length); i++) {
       const startIdx = i * membersPerCluster;

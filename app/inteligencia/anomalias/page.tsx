@@ -316,8 +316,8 @@ export default function AnomaliasPage() {
                       <div className="flex items-center gap-6">
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-[#757575]">Valor:</span>
-                          <span className="text-lg font-bold text-[#BF092F]">{formatNumber(anomaly.actualValue)}</span>
-                          {anomaly.actualValue > anomaly.expectedValue ? (
+                          <span className="text-lg font-bold text-[#BF092F]">{formatNumber(anomaly.detectedValue)}</span>
+                          {anomaly.detectedValue > (anomaly.expectedValue || 0) ? (
                             <TrendingUp className="w-4 h-4 text-[#BF092F]" />
                           ) : (
                             <TrendingDown className="w-4 h-4 text-[#4CAF50]" />
@@ -325,11 +325,11 @@ export default function AnomaliasPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-[#757575]">Esperado:</span>
-                          <span className="text-lg font-bold text-[#757575]">{formatNumber(anomaly.expectedValue)}</span>
+                          <span className="text-lg font-bold text-[#757575]">{formatNumber(anomaly.expectedValue || 0)}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-[#757575]">Desvio:</span>
-                          <span className="text-lg font-bold text-[#16476A]">{formatNumber(anomaly.deviation)}σ</span>
+                          <span className="text-lg font-bold text-[#16476A]">{formatNumber(anomaly.deviationScore || 0)}σ</span>
                         </div>
                       </div>
                       <p className="text-xs text-[#757575] mt-2">

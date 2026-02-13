@@ -146,20 +146,20 @@ export default function PredicoesPage() {
         {/* Accuracy Cards */}
         {accuracy.length > 0 && (
           <div className="grid md:grid-cols-3 gap-4 mb-6">
-            {accuracy.filter(a => a.predictionType === activeType).slice(0, 3).map((acc) => (
-              <div key={acc.id} className="bg-white rounded-xl shadow-lg border border-[#E0E0E0] p-4">
+            {accuracy.filter(a => a.predictionType === activeType).slice(0, 3).map((acc, index) => (
+              <div key={`${acc.predictionType}-${acc.week}-${index}`} className="bg-white rounded-xl shadow-lg border border-[#E0E0E0] p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-[#757575]">Precisao</span>
                   <span className={`px-2 py-1 text-xs font-bold rounded-lg ${
-                    acc.accuracy >= 0.8 ? 'bg-[#4CAF50]/10 text-[#4CAF50]' :
-                    acc.accuracy >= 0.6 ? 'bg-[#FF9800]/10 text-[#FF9800]' :
+                    (acc.accuracyRate || 0) >= 0.8 ? 'bg-[#4CAF50]/10 text-[#4CAF50]' :
+                    (acc.accuracyRate || 0) >= 0.6 ? 'bg-[#FF9800]/10 text-[#FF9800]' :
                     'bg-[#BF092F]/10 text-[#BF092F]'
                   }`}>
-                    {(acc.accuracy * 100).toFixed(1)}%
+                    {((acc.accuracyRate || 0) * 100).toFixed(1)}%
                   </span>
                 </div>
-                <p className="text-2xl font-bold text-[#212121]">{acc.sampleSize} amostras</p>
-                <p className="text-xs text-[#757575] mt-1">MAE: {acc.mae?.toFixed(2) || 'N/A'}</p>
+                <p className="text-2xl font-bold text-[#212121]">{acc.totalPredictions} amostras</p>
+                <p className="text-xs text-[#757575] mt-1">MAE: {acc.meanAbsoluteError?.toFixed(2) || 'N/A'}</p>
               </div>
             ))}
           </div>
@@ -180,7 +180,7 @@ export default function PredicoesPage() {
           <div className="bg-white rounded-2xl shadow-xl border border-[#E0E0E0] px-6 py-24 text-center">
             <p className="text-xl font-bold text-[#BF092F] mb-4">{error}</p>
             <button
-              onClick={fetchPredictions}
+              onClick={() => fetchPredictions()}
               className="inline-flex items-center gap-2 bg-gradient-to-r from-[#16476A] to-[#3B9797] text-white px-6 py-3 rounded-xl font-bold"
             >
               <RefreshCw className="w-5 h-5" />
@@ -226,13 +226,13 @@ export default function PredicoesPage() {
                   {predictions.map((pred) => (
                     <tr key={pred.id} className="hover:bg-[#F8F9FA] transition-colors">
                       <td className="px-6 py-4">
-                        <p className="font-bold text-[#212121]">{pred.entityName || pred.entityId}</p>
+                        <p className="font-bold text-[#212121]">{pred.entityId || '-'}</p>
                         <p className="text-xs text-[#757575]">{translateEntityType(pred.entityType)}</p>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2 text-[#212121]">
                           <Calendar className="w-4 h-4 text-[#757575]" />
-                          {formatDate(pred.predictionDate)}
+                          {formatDate(pred.targetDate)}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -242,15 +242,15 @@ export default function PredicoesPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <span className={`px-3 py-1 text-sm font-bold rounded-lg ${
-                          pred.confidence >= 0.8 ? 'bg-[#4CAF50]/10 text-[#4CAF50]' :
-                          pred.confidence >= 0.6 ? 'bg-[#FF9800]/10 text-[#FF9800]' :
+                          pred.confidenceLevel >= 0.8 ? 'bg-[#4CAF50]/10 text-[#4CAF50]' :
+                          pred.confidenceLevel >= 0.6 ? 'bg-[#FF9800]/10 text-[#FF9800]' :
                           'bg-[#BF092F]/10 text-[#BF092F]'
                         }`}>
-                          {(pred.confidence * 100).toFixed(0)}%
+                          {(pred.confidenceLevel * 100).toFixed(0)}%
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center text-sm text-[#757575]">
-                        {pred.lowerBound?.toFixed(1)} - {pred.upperBound?.toFixed(1)}
+                        {pred.confidenceLower?.toFixed(1)} - {pred.confidenceUpper?.toFixed(1)}
                       </td>
                     </tr>
                   ))}

@@ -71,7 +71,11 @@ export type PredictionType =
   | 'risk_score'
   | 'demand_quantity'
   | 'loss_amount'
+  | 'loss_volume'
+  | 'loss_value'
   | 'expiry_count'
+  | 'expiry_risk'
+  | 'demand'
   | 'rupture_probability';
 
 export type ModelAlgorithm =

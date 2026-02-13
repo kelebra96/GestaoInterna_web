@@ -85,7 +85,7 @@ export default function RecomendacoesPage() {
     { value: 'pending', label: 'Pendentes' },
     { value: 'accepted', label: 'Aceitas' },
     { value: 'rejected', label: 'Rejeitadas' },
-    { value: 'implemented', label: 'Implementadas' },
+    { value: 'completed', label: 'Implementadas' },
     { value: undefined, label: 'Todas' },
   ];
 
@@ -163,9 +163,9 @@ export default function RecomendacoesPage() {
                   <span className="text-2xl font-bold text-[#212121]">{s.count}</span>
                 </div>
                 <p className="text-sm text-[#757575]">{translateRecommendationType(s.recommendationType)}</p>
-                {s.totalPotentialSavings > 0 && (
+                {(s.totalPotentialSavings ?? 0) > 0 && (
                   <p className="text-sm font-bold text-[#4CAF50] mt-1">
-                    {formatCurrency(s.totalPotentialSavings)} economia
+                    {formatCurrency(s.totalPotentialSavings!)} economia
                   </p>
                 )}
               </div>
@@ -205,7 +205,7 @@ export default function RecomendacoesPage() {
           <div className="bg-white rounded-2xl shadow-xl border border-[#E0E0E0] px-6 py-24 text-center">
             <p className="text-xl font-bold text-[#BF092F] mb-4">{error}</p>
             <button
-              onClick={fetchRecommendations}
+              onClick={() => fetchRecommendations()}
               className="inline-flex items-center gap-2 bg-gradient-to-r from-[#FF9800] to-[#F57C00] text-white px-6 py-3 rounded-xl font-bold"
             >
               <RefreshCw className="w-5 h-5" />
@@ -253,11 +253,11 @@ export default function RecomendacoesPage() {
                         </span>
                         {rec.status !== 'pending' && (
                           <span className={`px-3 py-1 text-xs font-bold rounded-lg ${
-                            rec.status === 'implemented' ? 'bg-[#4CAF50]/10 text-[#4CAF50]' :
+                            rec.status === 'completed' ? 'bg-[#4CAF50]/10 text-[#4CAF50]' :
                             rec.status === 'accepted' ? 'bg-[#3B9797]/10 text-[#3B9797]' :
                             'bg-[#757575]/10 text-[#757575]'
                           }`}>
-                            {rec.status === 'implemented' ? 'Implementada' :
+                            {rec.status === 'completed' ? 'Implementada' :
                              rec.status === 'accepted' ? 'Aceita' :
                              rec.status === 'rejected' ? 'Rejeitada' : rec.status}
                           </span>
@@ -265,9 +265,9 @@ export default function RecomendacoesPage() {
                       </div>
                       <h3 className="text-xl font-bold text-[#212121] mb-2">{rec.title}</h3>
                       <p className="text-[#757575]">{rec.description}</p>
-                      {rec.potentialSavings && rec.potentialSavings > 0 && (
+                      {rec.estimatedSavings && rec.estimatedSavings > 0 && (
                         <p className="mt-3 text-lg font-bold text-[#4CAF50]">
-                          Economia potencial: {formatCurrency(rec.potentialSavings)}
+                          Economia potencial: {formatCurrency(rec.estimatedSavings)}
                         </p>
                       )}
                     </div>
@@ -295,7 +295,7 @@ export default function RecomendacoesPage() {
                   {rec.status === 'accepted' && (
                     <div className="mt-4 pt-4 border-t border-[#E0E0E0] flex items-center justify-between">
                       <button
-                        onClick={() => handleStatusChange(rec.id, 'implemented')}
+                        onClick={() => handleStatusChange(rec.id, 'completed')}
                         className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#4CAF50] to-[#2E7D32] text-white rounded-xl font-bold"
                       >
                         <CheckCircle className="w-4 h-4" />
