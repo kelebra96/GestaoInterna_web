@@ -250,7 +250,7 @@ export default function AnomaliasPage() {
           <div className="bg-white rounded-2xl shadow-xl border border-[#E0E0E0] px-6 py-24 text-center">
             <p className="text-xl font-bold text-[#BF092F] mb-4">{error}</p>
             <button
-              onClick={fetchAnomalies}
+              onClick={() => fetchAnomalies()}
               className="inline-flex items-center gap-2 bg-gradient-to-r from-[#BF092F] to-[#8B0000] text-white px-6 py-3 rounded-xl font-bold"
             >
               <RefreshCw className="w-5 h-5" />

@@ -76,7 +76,8 @@
       "Bash(while read file)",
       "Bash(do sed -i 's/extractAuthFromRequest/getAuthFromRequest/g' \"$file\")",
       "Bash(done)",
-      "Bash(npx next build)"
+      "Bash(npx next build)",
+      "Bash(git ls-files:*)"
     ],
     "deny": [],
     "ask": []
