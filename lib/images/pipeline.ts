@@ -656,6 +656,6 @@ export async function generateQueriesWithOpenAI(product: ProductImageRow): Promi
 }
 
 // Placeholder para search API
-export async function searchImages(): Promise<string[]> {
+export async function searchImages(_provider?: string, _query?: string): Promise<string[]> {
   return [];
 }

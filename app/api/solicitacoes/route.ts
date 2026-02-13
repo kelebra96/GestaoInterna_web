@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { Role } from '@prisma/client';
 import { getAuthFromRequest } from '@/lib/helpers/auth';
 
 type Status = 'pending' | 'batched' | 'closed';
@@ -89,16 +90,26 @@ export async function GET(request: Request) {
     // Buscar solicitações com base nas permissões do usuário (excluindo rascunhos)
     let query = supabaseAdmin.from('solicitacoes').select('*').neq('status', 'draft');
 
-    // Se o usuário tem lojas específicas (storeIds), filtrar por essas lojas
-    if (auth.storeIds && auth.storeIds.length > 0) {
+    const isStoreScoped = auth.role === Role.gestor_loja || auth.role === Role.repositor;
+
+    // Se o usuário é limitado por loja, filtrar por storeIds
+    if (isStoreScoped && auth.storeIds && auth.storeIds.length > 0) {
       console.log('🔍 Buscando solicitações das lojas:', auth.storeIds);
 
       // Supabase não tem limite de 10 itens no IN, então não precisa de chunking!
       query = query.in('store_id', auth.storeIds);
-    } else if (auth.role !== 'super_admin' && auth.orgId) {
+    } else if (auth.role !== Role.super_admin && auth.orgId) {
       // Usuário sem lojas específicas - filtrar por companyId
-      console.log('🔍 Buscando solicitações da empresa:', auth.orgId);
-      query = query.eq('company_id', auth.orgId);
+      if (auth.orgId === 'unknown-org') {
+        console.warn('⚠️ [GET /api/solicitacoes] orgId desconhecido; ignorando filtro por empresa');
+      } else if (auth.role === Role.admin_rede) {
+        // Admins veem a empresa e registros legados sem company_id
+        console.log('🔍 Buscando solicitações da empresa (incluindo sem company_id):', auth.orgId);
+        query = query.or(`company_id.eq.${auth.orgId},company_id.is.null`);
+      } else {
+        console.log('🔍 Buscando solicitações da empresa:', auth.orgId);
+        query = query.eq('company_id', auth.orgId);
+      }
     }
 
     const { data: solicitacoesData, error: solicitacoesError } = await query;
@@ -118,7 +129,8 @@ export async function GET(request: Request) {
       // Converter createdAt (já vem como string ISO do Supabase)
       const createdAt = new Date(data.created_at || new Date());
 
-      const userName = await getUserName(data.created_by);
+      let buyerId: string | null = data.buyer_id || data.created_by || null;
+      let userName: string | null = null;
       const storeName = await getStoreName(data.store_id);
       const companyId = data.company_id || null;
       const companyName = await getCompanyName(companyId || undefined);
@@ -127,19 +139,21 @@ export async function GET(request: Request) {
       let total: number | undefined;
       let shouldUpdateStatus = false;
 
+      let itensData: any[] | null = null;
       try {
         // Buscar itens da solicitação (substituindo subcollection por foreign key)
-        const { data: itensData, error: itensError } = await supabaseAdmin
+        const { data: itensDataResult, error: itensError } = await supabaseAdmin
           .from('solicitacao_itens')
           .select('*')
           .eq('solicitacao_id', data.id);
 
-        if (!itensError && itensData) {
-          items = itensData.length;
+        if (!itensError && itensDataResult) {
+          itensData = itensDataResult;
+          items = itensDataResult.length;
 
           // Verificar se todos os itens foram processados
           if (items && items > 0) {
-            const allProcessed = itensData.every((item: any) => {
+            const allProcessed = itensDataResult.every((item: any) => {
               const itemStatus = item.status;
               return itemStatus === 'approved' || itemStatus === 'rejected';
             });
@@ -153,7 +167,7 @@ export async function GET(request: Request) {
 
           // Calcular total
           let sum = 0;
-          for (const it of itensData) {
+          for (const it of itensDataResult) {
             const qtd = it.qtd ?? 0;
             const precoAtual = it.preco_atual ?? 0;
             if (typeof qtd === 'number' && typeof precoAtual === 'number') {
@@ -164,6 +178,48 @@ export async function GET(request: Request) {
         }
       } catch {
         // Ignorar erros de itens individuais para evitar quebrar listagem
+      }
+
+      const isUuidLike = (value: string) => value.length > 20 || value.includes('-');
+
+      if (!buyerId && itensData && itensData.length > 0) {
+        const rawBuyer =
+          itensData.find((item: any) => item.comprador || item.comprador_id || item.buyer_id)?.comprador ||
+          itensData.find((item: any) => item.comprador || item.comprador_id || item.buyer_id)?.comprador_id ||
+          itensData.find((item: any) => item.comprador || item.comprador_id || item.buyer_id)?.buyer_id;
+
+        if (rawBuyer) {
+          const rawValue = String(rawBuyer).trim();
+          if (rawValue) {
+            if (isUuidLike(rawValue)) {
+              buyerId = rawValue;
+              userName = await getUserName(buyerId);
+            } else {
+              buyerId = `buyer:${rawValue}`;
+              userName = rawValue;
+            }
+          }
+        }
+      }
+
+      if (!userName) {
+        const fallbackId = buyerId || data.created_by || null;
+        buyerId = buyerId || fallbackId;
+        userName = await getUserName(fallbackId || undefined);
+      }
+
+      // Persistir buyer_id se inferido e ainda estiver nulo no banco
+      if (!data.buyer_id && buyerId && !buyerId.startsWith('buyer:')) {
+        (async () => {
+          try {
+            await supabaseAdmin
+              .from('solicitacoes')
+              .update({ buyer_id: buyerId })
+              .eq('id', data.id);
+          } catch (err) {
+            console.error('Erro ao atualizar buyer_id da solicitacao:', data.id, err);
+          }
+        })();
       }
 
       // Atualizar o status no banco de dados se necessário (em background, não bloqueia a resposta)
@@ -187,7 +243,7 @@ export async function GET(request: Request) {
         id: data.id,
         status,
         createdAt: createdAt.toISOString(),
-        userId: data.created_by || null,
+        userId: buyerId,
         userName,
         storeId: data.store_id || null,
         storeName,

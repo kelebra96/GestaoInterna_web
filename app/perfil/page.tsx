@@ -489,7 +489,7 @@ export default function PerfilPage() {
                       type="password"
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
-                      className="block w-full pl-12 pr-4 py-4 bg-white border-2 border-[#BFC7C9] rounded-xl shadow-sm placeholder-[#757575] focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all duration-300 hover:border-[#3B9797]"
+                      className="block w-full pl-12 pr-4 py-4 bg-white text-[#000000] border-2 border-[#BFC7C9] rounded-xl shadow-sm placeholder-[#757575] focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all duration-300 hover:border-[#3B9797]"
                       placeholder="Digite sua senha atual"
                     />
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#757575]">
@@ -511,7 +511,7 @@ export default function PerfilPage() {
                         type="password"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="block w-full pl-12 pr-4 py-4 bg-white border-2 border-[#BFC7C9] rounded-xl shadow-sm placeholder-[#757575] focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all duration-300 hover:border-[#3B9797]"
+                        className="block w-full pl-12 pr-4 py-4 bg-white text-[#000000] border-2 border-[#BFC7C9] rounded-xl shadow-sm placeholder-[#757575] focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all duration-300 hover:border-[#3B9797]"
                         placeholder="Mínimo 6 caracteres"
                       />
                       <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#757575]">
@@ -531,7 +531,7 @@ export default function PerfilPage() {
                         type="password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="block w-full pl-12 pr-4 py-4 bg-white border-2 border-[#BFC7C9] rounded-xl shadow-sm placeholder-[#757575] focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all duration-300 hover:border-[#3B9797]"
+                        className="block w-full pl-12 pr-4 py-4 bg-white text-[#000000] border-2 border-[#BFC7C9] rounded-xl shadow-sm placeholder-[#757575] focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all duration-300 hover:border-[#3B9797]"
                         placeholder="Repita a nova senha"
                       />
                       <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#757575]">
@@ -582,5 +582,4 @@ export default function PerfilPage() {
     </div>
   );
 }
-
 

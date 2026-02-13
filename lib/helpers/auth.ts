@@ -55,20 +55,44 @@ type UserProfileRow = {
   store_ids: string[] | null;
 };
 
-async function fetchUserProfile(userId: string): Promise<UserProfileRow | null> {
+async function fetchUserProfile(userId: string, email?: string): Promise<UserProfileRow | null> {
   try {
+    // First try to fetch by ID (works if userId is a valid UUID)
     const { data, error } = await supabaseAdmin
       .from('users')
       .select('id, role, company_id, store_id, store_ids')
       .eq('id', userId)
       .maybeSingle();
 
-    if (error) {
-      console.error('Error fetching user profile from Supabase:', error);
-      return null;
+    if (data) {
+      return data as UserProfileRow;
     }
 
-    return data as UserProfileRow;
+    // If ID lookup failed and we have an email, try by email
+    if (email) {
+      console.log('[AUTH] ID lookup failed, trying by email:', email);
+      const { data: dataByEmail, error: errorByEmail } = await supabaseAdmin
+        .from('users')
+        .select('id, role, company_id, store_id, store_ids')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (errorByEmail) {
+        console.error('Error fetching user profile by email:', errorByEmail);
+        return null;
+      }
+
+      return dataByEmail as UserProfileRow;
+    }
+
+    if (error) {
+      // Silently ignore UUID format errors since we'll try by email
+      if (error.code !== '22P02') {
+        console.error('Error fetching user profile from Supabase:', error);
+      }
+    }
+
+    return null;
   } catch (error) {
     console.error('Error fetching user profile from Supabase:', error);
     return null;
@@ -94,36 +118,54 @@ export async function getAuthFromRequest(request: Request): Promise<AuthPayload 
   try {
     // 1. Try to get user payload from x-user-payload header (set by frontend)
     const userPayloadHeader = request.headers.get('x-user-payload');
+    let parsedPayload: Record<string, unknown> | null = null;
+
     if (userPayloadHeader) {
       try {
-        const parsed = JSON.parse(userPayloadHeader);
-        const payload = {
-          userId: parsed.userId || decodedFromBearer['user_id'] || decodedFromBearer['sub'],
-          orgId: parsed.orgId || parsed.companyId || 'unknown-org',
-          role: mapRole(parsed.role),
-          storeIds: Array.isArray(parsed.storeIds) ? parsed.storeIds : [],
-          iat: decodedFromBearer?.['iat'] as number | undefined,
-          exp: decodedFromBearer?.['exp'] as number | undefined,
-        };
-
-        const validation = AuthPayloadSchema.safeParse(payload);
-        if (validation.success) {
-          return validation.data;
-        }
+        parsedPayload = JSON.parse(userPayloadHeader);
       } catch (parseError) {
         console.error('Failed to parse x-user-payload header:', parseError);
       }
     }
 
-    // 2. Extract user ID from Firebase token
-    const userId = decodedFromBearer['user_id'] || decodedFromBearer['sub'];
+    // Extract user ID first
+    const userId =
+      parsedPayload?.['userId'] ||
+      decodedFromBearer['user_id'] ||
+      decodedFromBearer['sub'];
+
     if (!userId || typeof userId !== 'string') {
       console.error('No user ID found in token');
       return null;
     }
 
-    // 3. Fetch user profile from Supabase database
-    const profile = await fetchUserProfile(userId);
+    // Check if we have a valid orgId from payload
+    const payloadOrgId = parsedPayload?.['orgId'] || parsedPayload?.['companyId'];
+    const hasValidOrgId = payloadOrgId && typeof payloadOrgId === 'string' && payloadOrgId.length > 0;
+
+    // If we have a valid orgId from payload, use it directly
+    if (hasValidOrgId) {
+      const payload = {
+        userId: userId,
+        orgId: payloadOrgId as string,
+        role: mapRole(parsedPayload?.['role'] as string | undefined),
+        storeIds: Array.isArray(parsedPayload?.['storeIds']) ? parsedPayload['storeIds'] as string[] : [],
+        iat: decodedFromBearer?.['iat'] as number | undefined,
+        exp: decodedFromBearer?.['exp'] as number | undefined,
+      };
+
+      const validation = AuthPayloadSchema.safeParse(payload);
+      if (validation.success) {
+        return validation.data;
+      }
+    }
+
+    // 2. Fetch user profile from Supabase database to get orgId
+    // Try by ID first, then by email if ID is not a valid UUID
+    const email = decodedFromBearer['email'] as string | undefined;
+    console.log('[AUTH] Looking up user - userId:', userId, 'email:', email);
+    const profile = await fetchUserProfile(userId, email);
+    console.log('[AUTH] Profile found:', profile ? 'yes' : 'no', profile?.company_id);
 
     const roleValue =
       profile?.role ||

@@ -31,7 +31,7 @@ import { Solicitacao as SolicitacaoType } from '@/lib/types/business';
 
 type Status = 'pending' | 'batched' | 'closed';
 
-interface Solicitacao extends SolicitacaoType {
+type Solicitacao = Omit<SolicitacaoType, 'userId' | 'storeId'> & {
   userId?: string | null;
   userName: string;
   storeId?: string | null;
@@ -39,7 +39,7 @@ interface Solicitacao extends SolicitacaoType {
   companyName?: string;
   items?: number;
   total?: number;
-}
+};
 
 const statusLabels: Record<Status, string> = {
   pending: 'Pendente',
@@ -397,7 +397,7 @@ export default function SolicitacoesPage() {
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                       placeholder="ID, usuário, loja ou empresa..."
-                      className="w-full pl-12 pr-4 py-3 border-2 border-[#BFC7C9] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all hover:border-[#3B9797]"
+                      className="w-full pl-12 pr-4 py-3 border-2 border-[#BFC7C9] rounded-xl bg-white text-[#000000] focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all hover:border-[#3B9797]"
                     />
                   </div>
                 </div>
@@ -412,7 +412,7 @@ export default function SolicitacoesPage() {
                     <select
                       value={selectedBuyer}
                       onChange={(e) => setSelectedBuyer(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3 border-2 border-[#BFC7C9] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all hover:border-[#3B9797] appearance-none cursor-pointer"
+                      className="w-full pl-12 pr-4 py-3 border-2 border-[#BFC7C9] rounded-xl bg-white text-[#000000] focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all hover:border-[#3B9797] appearance-none cursor-pointer"
                     >
                       <option value="all">Todos os compradores</option>
                       {buyers.map((buyer) => (
@@ -437,7 +437,7 @@ export default function SolicitacoesPage() {
                     <select
                       value={selectedStore}
                       onChange={(e) => setSelectedStore(e.target.value)}
-                      className="w-full pl-12 pr-4 py-3 border-2 border-[#BFC7C9] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all hover:border-[#3B9797] appearance-none cursor-pointer"
+                      className="w-full pl-12 pr-4 py-3 border-2 border-[#BFC7C9] rounded-xl bg-white text-[#000000] focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all hover:border-[#3B9797] appearance-none cursor-pointer"
                     >
                       <option value="all">Todas as lojas</option>
                       {stores.map((store) => (
@@ -691,6 +691,4 @@ export default function SolicitacoesPage() {
     </div>
   );
 }
-
-
 

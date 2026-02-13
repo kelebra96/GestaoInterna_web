@@ -50,32 +50,23 @@ export async function GET() {
     });
   }
 
-  // 3. Verificar APIs principais
-  const apiEndpoints = [
-    { name: 'dashboard', path: '/api/dashboard' },
-    { name: 'usuarios', path: '/api/usuarios' },
-    { name: 'solicitacoes', path: '/api/solicitacoes' },
+  // 3. Verificar APIs principais (checagens internas sem HTTP)
+  const apiChecks = [
+    { path: '/api/dashboard', query: () => supabaseAdmin.from('stores').select('count').limit(1) },
+    { path: '/api/usuarios', query: () => supabaseAdmin.from('users').select('count').limit(1) },
+    { path: '/api/solicitacoes', query: () => supabaseAdmin.from('solicitacoes').select('count').limit(1) },
   ];
 
-  for (const api of apiEndpoints) {
+  for (const api of apiChecks) {
     const apiStart = Date.now();
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-      const response = await fetch(`${baseUrl}${api.path}`, {
-        method: 'GET',
-        signal: AbortSignal.timeout(5000),
-      });
-
-      let status: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
-      if (response.status >= 500) status = 'unhealthy';
-      else if (response.status >= 400) status = 'degraded';
-
+      const { error } = await api.query();
       results.push({
         check_type: 'api',
         endpoint: api.path,
-        status,
+        status: error ? 'unhealthy' : 'healthy',
         response_time_ms: Date.now() - apiStart,
-        status_code: response.status,
+        error_message: error?.message,
       });
     } catch (err: any) {
       results.push({

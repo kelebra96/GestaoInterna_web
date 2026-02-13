@@ -43,7 +43,8 @@ export async function POST(request: Request) {
 
   if (presenceError) {
     console.error('Erro ao atualizar presence:', presenceError);
-    return NextResponse.json({ error: 'Falha ao atualizar presença' }, { status: 500 });
+    // Não falhar a requisição se a tabela presence não existir ou estiver indisponível.
+    return NextResponse.json({ ok: true, warning: 'presence_update_failed' });
   }
 
   return NextResponse.json({ ok: true });

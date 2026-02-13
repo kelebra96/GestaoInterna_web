@@ -11,6 +11,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const errorIdBase = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `err_${Date.now()}`;
   try {
     // Verificar autenticação
     const auth = await getAuthFromRequest(request);
@@ -60,9 +61,18 @@ export async function POST(
     console.log(`[IMPORT] Parse concluído: ${parseResult.lines.length} linhas válidas, ${parseResult.errors.length} erros`);
 
     if (!parseResult.success) {
+      const errorId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${errorIdBase}_parse`;
+      console.warn('[IMPORT] Parse inválido', {
+        errorId,
+        inventoryId,
+        totalLines: parseResult.totalLines,
+        validLines: parseResult.validLines,
+        errors: parseResult.errors?.slice(0, 5),
+      });
       return NextResponse.json(
         {
           error: 'Erro ao processar arquivo',
+          errorId,
           details: parseResult.errors,
         },
         { status: 400 }
@@ -254,13 +264,18 @@ export async function POST(
       stats,
     });
   } catch (error: any) {
-    console.error('Erro ao importar arquivo:', error);
+    const errorId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${errorIdBase}_fatal`;
+    console.error('Erro ao importar arquivo:', {
+      errorId,
+      message: error?.message,
+      stack: error?.stack,
+    });
     try {
       await supabaseAdmin
         .from('inventories')
         .update({
           import_status: 'failed',
-          import_message: error.message || 'Erro desconhecido',
+          import_message: `${error.message || 'Erro desconhecido'} (ref: ${errorId})`,
           updated_at: new Date().toISOString(),
         })
         .eq('id', (await params).id);
@@ -268,7 +283,7 @@ export async function POST(
       console.error('Erro ao atualizar status de falha:', updateError);
     }
     return NextResponse.json(
-      { error: 'Erro ao importar arquivo: ' + error.message },
+      { error: 'Erro ao importar arquivo: ' + error.message, errorId },
       { status: 500 }
     );
   }

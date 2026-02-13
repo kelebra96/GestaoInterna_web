@@ -243,3 +243,85 @@ export async function POST(
     );
   }
 }
+
+// GET - Listar contagens do inventário
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const auth = await getAuthFromRequest(request);
+    if (!auth) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    }
+
+    const { id: inventoryId } = await params;
+    const { searchParams } = new URL(request.url);
+    const addressCode = searchParams.get('addressCode');
+    const limit = parseInt(searchParams.get('limit') || '20');
+
+    // Buscar inventário
+    const { data: inventoryData, error: inventoryError } = await supabaseAdmin
+      .from('inventories')
+      .select('*')
+      .eq('id', inventoryId)
+      .single();
+
+    if (inventoryError || !inventoryData) {
+      return NextResponse.json(
+        { error: 'Inventário não encontrado' },
+        { status: 404 }
+      );
+    }
+
+    // Verificar autorização
+    if (!isAuthorizedToAccessInventory(auth, {
+      storeId: inventoryData.store_id,
+      companyId: inventoryData.company_id
+    })) {
+      return NextResponse.json(
+        { error: 'Acesso negado a este inventário' },
+        { status: 403 }
+      );
+    }
+
+    // Construir query de contagens
+    let query = supabaseAdmin
+      .from('inventory_counts')
+      .select('id, ean, product_description, quantity, expiration_date, address_code, counted_at, counted_by_name')
+      .eq('inventory_id', inventoryId)
+      .order('counted_at', { ascending: false })
+      .limit(limit);
+
+    if (addressCode) {
+      query = query.eq('address_code', addressCode);
+    }
+
+    const { data: counts, error: countsError } = await query;
+
+    if (countsError) throw countsError;
+
+    // Mapear para camelCase
+    const mappedCounts = (counts || []).map(c => ({
+      id: c.id,
+      ean: c.ean,
+      description: c.product_description,
+      quantity: c.quantity,
+      expirationDate: c.expiration_date,
+      addressCode: c.address_code,
+      countedAt: c.counted_at,
+      countedBy: c.counted_by_name,
+    }));
+
+    return NextResponse.json({
+      counts: mappedCounts,
+      total: mappedCounts.length,
+    });
+  } catch (error: any) {
+    console.error('Erro ao listar contagens:', error);
+    return NextResponse.json(
+      { error: 'Erro ao listar contagens: ' + error.message },
+      { status: 500 }
+    );
+  }
+}

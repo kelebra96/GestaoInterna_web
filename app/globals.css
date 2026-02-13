@@ -2,21 +2,22 @@
 
 :root {
   /* Cores principais - MyInventory */
-  --primary: #1F53A2;
-  --primary-light: #E3EFFF;
-  --primary-dark: #153D7A;
-  --secondary: #5C94CC;
-  --accent: #E82129;
+  /* Paleta Principal: #BF092F, #132440, #16476A, #3B9797 */
+  --primary: #132440;
+  --primary-light: #E0E7EF;
+  --primary-dark: #0D1A2D;
+  --secondary: #16476A;
+  --accent: #BF092F;
 
   /* Cores de suporte */
-  --tertiary: #647CAC;
+  --tertiary: #3B9797;
   --neutral: #BFC7C9;
 
   /* Estados */
-  --success: #4CAF50;
-  --warning: #FF9800;
-  --error: #E82129;
-  --info: #5C94CC;
+  --success: #3B9797;
+  --warning: #BF092F;
+  --error: #BF092F;
+  --info: #16476A;
 
   /* Backgrounds */
   --background: #F5F5F5;

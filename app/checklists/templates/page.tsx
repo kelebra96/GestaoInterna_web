@@ -310,7 +310,7 @@ export default function ChecklistTemplatesPage() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Nome ou descrição..."
-                    className="w-full pl-12 pr-4 py-3 border-2 border-[#E0E0E0] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all hover:border-[#3B9797]"
+                    className="w-full pl-12 pr-4 py-3 border-2 border-[#E0E0E0] rounded-xl bg-white text-[#000000] focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all hover:border-[#3B9797]"
                   />
                 </div>
               </div>
@@ -320,7 +320,7 @@ export default function ChecklistTemplatesPage() {
                 <select
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value as any)}
-                  className="px-4 py-3 border-2 border-[#E0E0E0] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all hover:border-[#3B9797] font-semibold text-[#212121]"
+                  className="px-4 py-3 border-2 border-[#E0E0E0] rounded-xl bg-white text-[#000000] focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all hover:border-[#3B9797] font-semibold"
                 >
                   <option value="all">Todos os tipos</option>
                   {Object.entries(typeLabels).map(([key, label]) => (

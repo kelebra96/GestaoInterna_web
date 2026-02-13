@@ -743,7 +743,7 @@ export default function ChecklistsPage() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Template, loja ou responsável..."
-                    className="w-full pl-12 pr-4 py-3 border-2 border-[#E0E0E0] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all hover:border-[#3B9797]"
+                    className="w-full pl-12 pr-4 py-3 border-2 border-[#E0E0E0] rounded-xl bg-white text-[#000000] focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] transition-all hover:border-[#3B9797]"
                   />
                 </div>
               </div>

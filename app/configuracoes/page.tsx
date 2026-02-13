@@ -189,7 +189,8 @@ export default function ConfiguracoesPage() {
 
   const getSignalingUrl = () => {
     if (!signalingHost) return '';
-    return `${signalingProtocol}://${signalingHost}:${signalingPort}`;
+    const normalizedPort = signalingPort && signalingPort !== '443' && signalingPort !== '80' ? `:${signalingPort}` : '';
+    return `${signalingProtocol}://${signalingHost}${normalizedPort}`;
   };
 
   const testSignalingConnection = async () => {

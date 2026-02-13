@@ -16,6 +16,10 @@ export async function GET(
 
     if (error) {
       console.error('[UserActivities] Error fetching:', error);
+      // Se a tabela não existir, retornar vazio sem 500
+      if (error.code === 'PGRST205') {
+        return NextResponse.json({ activities: [] });
+      }
       throw error;
     }
 
@@ -32,4 +36,3 @@ export async function GET(
     return NextResponse.json({ error: 'Falha ao listar atividades' }, { status: 500 });
   }
 }
-

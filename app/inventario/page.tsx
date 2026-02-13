@@ -215,7 +215,7 @@ export default function InventarioPage() {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Buscar por nome, loja ou empresa..."
-                    className="w-full pl-12 pr-4 py-3 border-2 border-[#E0E0E0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] font-medium transition-all"
+                    className="w-full pl-12 pr-4 py-3 border-2 border-[#E0E0E0] rounded-xl text-[#000000] focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] font-medium transition-all"
                   />
                 </div>
 
@@ -223,7 +223,7 @@ export default function InventarioPage() {
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value as any)}
-                    className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] font-medium bg-white transition-all"
+                    className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl text-[#000000] focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] font-medium bg-white transition-all"
                   >
                     <option value="all">Todos os Status</option>
                     <option value="preparation">Preparação</option>
@@ -237,7 +237,7 @@ export default function InventarioPage() {
                   <select
                     value={storeFilter}
                     onChange={(e) => setStoreFilter(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] font-medium bg-white transition-all"
+                    className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl text-[#000000] focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] font-medium bg-white transition-all"
                   >
                     <option value="all">Todas as Lojas</option>
                     {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}

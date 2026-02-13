@@ -26,6 +26,19 @@ export default function ImportarInventarioPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sampleTxt =
+    '7891234567890 123456789 DESCRICAO PRODUTO TESTE                         000010,99 00000012\n' +
+    '7899876543210 987654321 ARROZ TIPO 1 5KG                                000025,90 00000005\n';
+
+  const handleDownloadModel = () => {
+    const blob = new Blob([sampleTxt], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'modelo_inventario.txt';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -180,12 +193,26 @@ export default function ImportarInventarioPage() {
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Falha ao importar arquivo');
+      const responseText = await response.text();
+      let parsed: any = null;
+      if (responseText) {
+        try {
+          parsed = JSON.parse(responseText);
+        } catch {
+          parsed = null;
+        }
       }
 
-      const result = await response.json();
+      if (!response.ok) {
+        const message =
+          parsed?.error ||
+          `HTTP ${response.status}: ${response.statusText || 'Erro'}${
+            responseText ? ` — ${responseText.slice(0, 200)}` : ''
+          }`;
+        throw new Error(message);
+      }
+
+      const result = parsed ?? {};
       setImportResult(result);
       success = true;
 
@@ -401,6 +428,30 @@ export default function ImportarInventarioPage() {
                   className="hidden"
                 />
               </label>
+            </section>
+
+            <section className="rounded-2xl border border-[#E0E0E0] bg-white shadow-sm p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <Database className="w-5 h-5 text-[#16476A]" />
+                <h2 className="text-lg font-bold text-[#16476A]">Modelo do arquivo</h2>
+              </div>
+              <p className="text-sm text-[#757575]">
+                Arquivo TXT posicional (91-92 caracteres por linha). Layout:
+              </p>
+              <div className="text-xs text-[#212121] bg-[#F8F9FA] border border-[#E0E0E0] rounded-xl p-3 font-mono">
+                1-13 EAN | 15-23 CÓDIGO | 25-74 DESCRIÇÃO | 76-84 PREÇO | 85-92 QTD
+              </div>
+              <div className="text-xs text-[#212121] bg-[#F8F9FA] border border-[#E0E0E0] rounded-xl p-3 font-mono whitespace-pre">
+                {sampleTxt}
+              </div>
+              <button
+                type="button"
+                onClick={handleDownloadModel}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#16476A]/30 text-[#16476A] font-semibold hover:bg-[#E0E7EF] transition"
+              >
+                <FileText className="w-4 h-4" />
+                Baixar modelo TXT
+              </button>
             </section>
 
             <section className="rounded-2xl border border-[#E0E0E0] bg-white shadow-sm p-6 space-y-3">

@@ -50,15 +50,34 @@ export async function GET(
       );
     }
 
-    // Buscar item
-    const { data: items, error: itemError } = await supabaseAdmin
+    // Buscar item por EAN ou por código interno (busca exata)
+    let { data: items, error: itemError } = await supabaseAdmin
       .from('inventory_items')
       .select('*')
       .eq('inventory_id', inventoryId)
-      .eq('ean', ean)
+      .or(`ean.eq.${ean},internal_code.eq.${ean}`)
       .limit(1);
 
-    if (itemError || !items || items.length === 0) {
+    // Se não encontrou, tentar buscar por EAN que termina com o código digitado (zeros à esquerda)
+    if ((!items || items.length === 0) && !itemError) {
+      const result = await supabaseAdmin
+        .from('inventory_items')
+        .select('*')
+        .eq('inventory_id', inventoryId)
+        .or(`ean.ilike.%${ean},internal_code.ilike.%${ean}`)
+        .limit(1);
+      
+      items = result.data;
+      itemError = result.error;
+    }
+
+    if (itemError) {
+      console.error('[Items API] Erro na busca:', itemError);
+      return NextResponse.json({ item: null });
+    }
+
+    if (!items || items.length === 0) {
+      console.log(`[Items API] Produto não encontrado: EAN=${ean}`);
       return NextResponse.json({ item: null });
     }
 

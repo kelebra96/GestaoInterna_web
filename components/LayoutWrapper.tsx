@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { isPublicRoute } from '@/lib/accessControl';
 import { Menu, Maximize, Minimize, Share, X } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
+import { resolveSignalingUrl } from '@/lib/utils/signaling';
 import { supabase } from '@/lib/supabase-client';
 import Sidebar from './Sidebar';
 import { RoleGuard } from './RoleGuard';
@@ -236,14 +237,14 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
 
     // Usar configuração do localStorage se disponível, senão usar variável de ambiente
     const savedSignalingUrl = typeof window !== 'undefined' ? localStorage.getItem('pref.signalingServerUrl') : null;
-    const signalingUrl = savedSignalingUrl || process.env.NEXT_PUBLIC_SIGNALING_SERVER_URL || 'http://localhost:3002';
+    const signalingUrl = resolveSignalingUrl(savedSignalingUrl, process.env.NEXT_PUBLIC_SIGNALING_SERVER_URL);
     const signalingPath = process.env.NEXT_PUBLIC_SIGNALING_SOCKET_PATH || '/socket.io';
 
     console.log('🔌 [Signaling] Conectando ao servidor:', signalingUrl);
 
     const socket = io(signalingUrl, {
       path: signalingPath,
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
     });
     socketRef.current = socket;

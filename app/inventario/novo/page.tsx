@@ -162,7 +162,7 @@ export default function NovoInventarioPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ex.: Inventário Janeiro 2025"
-                  className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] font-medium transition-all"
+                  className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl text-[#000000] focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] font-medium transition-all"
                   required
                 />
                 <p className="text-xs text-[#757575] mt-2">
@@ -183,7 +183,7 @@ export default function NovoInventarioPage() {
                   <select
                     value={storeId}
                     onChange={(e) => setStoreId(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] font-medium bg-white transition-all"
+                    className="w-full px-4 py-3 border-2 border-[#E0E0E0] rounded-xl text-[#000000] focus:outline-none focus:ring-2 focus:ring-[#16476A] focus:border-[#16476A] font-medium bg-white transition-all"
                     required
                   >
                     <option value="">Selecione uma loja</option>

@@ -356,7 +356,7 @@ export default function NewChecklistTemplatePage() {
                 <select
                   value={companyId}
                   onChange={(e) => setCompanyId(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16476A]/30"
+                  className="text-[#000000] w-full px-3 py-2 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16476A]/30"
                   disabled={!!user?.companyId}
                 >
                   <option value="">Selecione uma empresa</option>
@@ -381,7 +381,7 @@ export default function NewChecklistTemplatePage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ex: Checklist de Abertura - Padaria"
-                className="w-full px-3 py-2 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16476A]/30"
+                className="text-[#000000] w-full px-3 py-2 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16476A]/30"
               />
             </div>
 
@@ -392,7 +392,7 @@ export default function NewChecklistTemplatePage() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Descreva o objetivo deste checklist"
                 rows={3}
-                className="w-full px-3 py-2 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16476A]/30"
+                className="text-[#000000] w-full px-3 py-2 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16476A]/30"
               />
             </div>
 
@@ -402,7 +402,7 @@ export default function NewChecklistTemplatePage() {
                 <select
                   value={type}
                   onChange={(e) => setType(e.target.value as ChecklistType)}
-                  className="w-full px-3 py-2 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16476A]/30"
+                  className="text-[#000000] w-full px-3 py-2 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16476A]/30"
                 >
                   {Object.entries(typeLabels).map(([key, label]) => (
                     <option key={key} value={key}>
@@ -419,7 +419,7 @@ export default function NewChecklistTemplatePage() {
                 <select
                   value={frequency}
                   onChange={(e) => setFrequency(e.target.value as Frequency)}
-                  className="w-full px-3 py-2 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16476A]/30"
+                  className="text-[#000000] w-full px-3 py-2 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16476A]/30"
                 >
                   {Object.entries(frequencyLabels).map(([key, label]) => (
                     <option key={key} value={key}>
@@ -439,7 +439,7 @@ export default function NewChecklistTemplatePage() {
                   onChange={(e) => setEstimatedDuration(e.target.value)}
                   placeholder="30"
                   min="0"
-                  className="w-full px-3 py-2 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16476A]/30"
+                  className="text-[#000000] w-full px-3 py-2 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16476A]/30"
                 />
               </div>
             </div>
@@ -450,7 +450,7 @@ export default function NewChecklistTemplatePage() {
                   type="checkbox"
                   checked={requiresGPS}
                   onChange={(e) => setRequiresGPS(e.target.checked)}
-                  className="w-4 h-4 text-[#16476A] rounded focus:ring-[#16476A]"
+                  className="text-[#000000] w-4 h-4 text-[#16476A] rounded focus:ring-[#16476A]"
                 />
                 <span className="text-sm text-[#212121]">Requer GPS</span>
               </label>
@@ -460,7 +460,7 @@ export default function NewChecklistTemplatePage() {
                   type="checkbox"
                   checked={requiresSignature}
                   onChange={(e) => setRequiresSignature(e.target.checked)}
-                  className="w-4 h-4 text-[#16476A] rounded focus:ring-[#16476A]"
+                  className="text-[#000000] w-4 h-4 text-[#16476A] rounded focus:ring-[#16476A]"
                 />
                 <span className="text-sm text-[#212121]">Requer Assinatura</span>
               </label>
@@ -505,7 +505,7 @@ export default function NewChecklistTemplatePage() {
                       value={question.question || ''}
                       onChange={(e) => updateQuestion(index, 'question', e.target.value)}
                       placeholder="Digite a pergunta"
-                      className="w-full px-3 py-2 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16476A]/30"
+                      className="text-[#000000] w-full px-3 py-2 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16476A]/30"
                     />
                   </div>
 
@@ -513,7 +513,7 @@ export default function NewChecklistTemplatePage() {
                     <select
                       value={question.type || 'yes_no'}
                       onChange={(e) => updateQuestion(index, 'type', e.target.value)}
-                      className="px-3 py-2 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16476A]/30"
+                      className="text-[#000000] px-3 py-2 border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16476A]/30"
                     >
                       {Object.entries(questionTypeLabels).map(([key, label]) => (
                         <option key={key} value={key}>
@@ -527,7 +527,7 @@ export default function NewChecklistTemplatePage() {
                         type="checkbox"
                         checked={question.required !== false}
                         onChange={(e) => updateQuestion(index, 'required', e.target.checked)}
-                        className="w-4 h-4 text-[#16476A] rounded"
+                        className="text-[#000000] w-4 h-4 text-[#16476A] rounded"
                       />
                       <span className="text-sm">Obrigatória</span>
                     </label>
@@ -552,7 +552,7 @@ export default function NewChecklistTemplatePage() {
                             value={option}
                             onChange={(e) => updateOption(index, optIndex, e.target.value)}
                             placeholder={`Opção ${optIndex + 1}`}
-                            className="flex-1 px-2 py-1 text-sm border border-[#E0E0E0] rounded"
+                            className="text-[#000000] flex-1 px-2 py-1 text-sm border border-[#E0E0E0] rounded"
                           />
                           {(question.options?.length || 0) > 2 && (
                             <button
@@ -575,21 +575,21 @@ export default function NewChecklistTemplatePage() {
                         value={question.minValue || ''}
                         onChange={(e) => updateQuestion(index, 'minValue', parseFloat(e.target.value))}
                         placeholder="Min"
-                        className="px-2 py-1 text-sm border border-[#E0E0E0] rounded"
+                        className="text-[#000000] px-2 py-1 text-sm border border-[#E0E0E0] rounded"
                       />
                       <input
                         type="number"
                         value={question.maxValue || ''}
                         onChange={(e) => updateQuestion(index, 'maxValue', parseFloat(e.target.value))}
                         placeholder="Max"
-                        className="px-2 py-1 text-sm border border-[#E0E0E0] rounded"
+                        className="text-[#000000] px-2 py-1 text-sm border border-[#E0E0E0] rounded"
                       />
                       <input
                         type="text"
                         value={question.unit || ''}
                         onChange={(e) => updateQuestion(index, 'unit', e.target.value)}
                         placeholder="Unidade"
-                        className="px-2 py-1 text-sm border border-[#E0E0E0] rounded"
+                        className="text-[#000000] px-2 py-1 text-sm border border-[#E0E0E0] rounded"
                       />
                     </div>
                   )}
@@ -622,7 +622,7 @@ export default function NewChecklistTemplatePage() {
                             }
                             setQuestions(updated);
                           }}
-                          className="w-4 h-4 text-[#BF092F] rounded focus:ring-[#BF092F]"
+                          className="text-[#000000] w-4 h-4 text-[#BF092F] rounded focus:ring-[#BF092F]"
                         />
                         <span className="text-sm font-semibold text-[#212121]">📷 Permitir anexar foto</span>
                       </label>
@@ -634,7 +634,7 @@ export default function NewChecklistTemplatePage() {
                               type="checkbox"
                               checked={!!question.photoRequired}
                               onChange={(e) => updateQuestion(index, 'photoRequired', e.target.checked)}
-                              className="w-4 h-4 text-[#BF092F] rounded focus:ring-[#BF092F]"
+                              className="text-[#000000] w-4 h-4 text-[#BF092F] rounded focus:ring-[#BF092F]"
                             />
                             <span className="text-sm text-[#212121]">Foto obrigatória</span>
                           </label>
@@ -647,7 +647,7 @@ export default function NewChecklistTemplatePage() {
                               onChange={(e) => updateQuestion(index, 'maxPhotos', parseInt(e.target.value) || 1)}
                               min="1"
                               max="10"
-                              className="w-20 px-2 py-1 text-sm border border-[#E0E0E0] rounded focus:outline-none focus:ring-2 focus:ring-[#BF092F]/30"
+                              className="text-[#000000] w-20 px-2 py-1 text-sm border border-[#E0E0E0] rounded focus:outline-none focus:ring-2 focus:ring-[#BF092F]/30"
                             />
                           </div>
                         </div>
@@ -670,7 +670,7 @@ export default function NewChecklistTemplatePage() {
                             placeholder="Ex: 10 pontos"
                             min="0"
                             max="100"
-                            className="w-full px-3 py-2 text-sm border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B9797]/30"
+                            className="text-[#000000] w-full px-3 py-2 text-sm border border-[#E0E0E0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3B9797]/30"
                           />
                           <p className="text-xs text-[#757575] mt-1">Quanto vale esta pergunta em pontos</p>
                         </div>
@@ -688,7 +688,7 @@ export default function NewChecklistTemplatePage() {
                                 updateQuestion(index, 'conformityExpectedAnswer', undefined);
                               }
                             }}
-                            className="w-4 h-4 text-[#3B9797] rounded focus:ring-[#3B9797]"
+                            className="text-[#000000] w-4 h-4 text-[#3B9797] rounded focus:ring-[#3B9797]"
                           />
                           <span className="text-sm font-semibold text-[#212121]">✅ Verificação de Conformidade</span>
                         </label>
@@ -706,7 +706,7 @@ export default function NewChecklistTemplatePage() {
                               <select
                                 value={question.conformityExpectedAnswer || 'yes'}
                                 onChange={(e) => updateQuestion(index, 'conformityExpectedAnswer', e.target.value)}
-                                className="w-full px-2 py-1.5 text-sm border border-[#E0E0E0] rounded focus:outline-none focus:ring-2 focus:ring-[#3B9797]/30"
+                                className="text-[#000000] w-full px-2 py-1.5 text-sm border border-[#E0E0E0] rounded focus:outline-none focus:ring-2 focus:ring-[#3B9797]/30"
                               >
                                 <option value="yes">Sim (Conforme quando Sim)</option>
                                 <option value="no">Não (Conforme quando Não)</option>
@@ -717,7 +717,7 @@ export default function NewChecklistTemplatePage() {
                               <select
                                 value={question.conformityExpectedAnswer || question.options[0]}
                                 onChange={(e) => updateQuestion(index, 'conformityExpectedAnswer', e.target.value)}
-                                className="w-full px-2 py-1.5 text-sm border border-[#E0E0E0] rounded focus:outline-none focus:ring-2 focus:ring-[#3B9797]/30"
+                                className="text-[#000000] w-full px-2 py-1.5 text-sm border border-[#E0E0E0] rounded focus:outline-none focus:ring-2 focus:ring-[#3B9797]/30"
                               >
                                 {question.options.map((opt, optIdx) => (
                                   <option key={optIdx} value={opt}>

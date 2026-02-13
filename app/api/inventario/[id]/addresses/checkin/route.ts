@@ -58,6 +58,8 @@ export async function POST(
     }
 
     // Buscar o endereço pelo código
+    console.log(`[CheckIn] Buscando endereço: code='${addressCode}' invId='${inventoryId}'`);
+    
     const { data: addresses, error: addressError } = await supabaseAdmin
       .from('inventory_addresses')
       .select('*')
@@ -66,6 +68,19 @@ export async function POST(
       .limit(1);
 
     if (addressError || !addresses || addresses.length === 0) {
+      console.log(`[CheckIn] Endereço não encontrado. Query result:`, addresses, 'Error:', addressError);
+      
+      // Debug: verificar se existe em OUTRO inventário
+      const { data: otherInv } = await supabaseAdmin
+        .from('inventory_addresses')
+        .select('inventory_id, inventories(name)')
+        .eq('address_code', addressCode)
+        .limit(1);
+        
+      if (otherInv && otherInv.length > 0) {
+        console.log(`[CheckIn] Endereço existe no inventário:`, otherInv[0]);
+      }
+
       return NextResponse.json(
         { error: 'Endereço não cadastrado neste inventário' },
         { status: 404 }

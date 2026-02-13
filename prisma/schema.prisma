@@ -31,6 +31,8 @@ model User {
   storeIds      String[] // Removido  - pode ser ID do Firestore ou MongoDB
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  createdExpiryReports ExpiryReport[]
+  reportActions UserReportAction[]
 }
 
 // 2. CORE BUSINESS MODELS
@@ -56,6 +58,8 @@ model Store {
   userIds        String[] // Removido  - pode ser ID do Firestore ou MongoDB
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  expiryReports ExpiryReport[]
 }
 
 model Product {
@@ -82,6 +86,7 @@ model Product {
   hourlySales        HourlySale[]
   ruptureEvents      RuptureEvent[]
   inventorySnapshots InventorySnapshot[]
+  expiryReports      ExpiryReport[]
 }
 
 // 3. PLANOGRAM AND SHELF STRUCTURE MODELS
@@ -276,3 +281,51 @@ model Promotion {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
+
+// 6. EXPIRATION MANAGEMENT MODELS
+
+enum ExpiryReportStatus {
+  reported // Inicialmente reportado
+  watching // Em monitoramento
+  confirmed // Confirmado como problema
+  resolved // Problema resolvido (removido, vendido, etc.)
+  ignored // Ignorado (ex: erro de reporte, validade ok)
+  canceled // Cancelado (ex: report duplicado, item não encontrado)
+}
+
+enum UserReportActionType {
+  watch
+  confirmed
+  ignored
+  resolved
+  canceled
+}
+
+model ExpiryReport {
+  id          String             @id @default(uuid())
+  storeId     String
+  store       Store              @relation(fields: [storeId], references: [id])
+  productId   String
+  product     Product            @relation(fields: [productId], references: [id])
+  quantity    Int
+  expiryDate  DateTime
+  photoPath   String?
+  status      ExpiryReportStatus @default(reported)
+  createdBy   String
+  user        User               @relation(fields: [createdBy], references: [id])
+  createdAt   DateTime           @default(now())
+  resolvedAt  DateTime?
+
+  actions UserReportAction[]
+}
+
+model UserReportAction {
+  id          String               @id @default(uuid())
+  userId      String
+  user        User                 @relation(fields: [userId], references: [id])
+  reportId    String
+  report      ExpiryReport         @relation(fields: [reportId], references: [id])
+  actionType  UserReportActionType
+  createdAt   DateTime             @default(now())
+}
+

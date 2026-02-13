@@ -1,0 +1,52 @@
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Next.js (bloquear tudo exceto standalone e static)
+.next/*
+!.next/standalone
+!.next/static
+out
+dist
+
+# Prisma
+prisma/migrations
+
+#Env files (usar docker secrets em produção)
+.env.local
+.env.*.local
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Testing
+coverage
+.nyc_output
+
+# Misc
+*.md
+!README.md
+.editorconfig
+tmp_*
+backups
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore

@@ -70,7 +70,13 @@
       "Bash(wc:*)",
       "Bash(npx tsc:*)",
       "Bash(ipconfig:*)",
-      "Bash(del \"D:\\\\myinventory\\\\WEB\\\\hooks\\\\useSignalingPresence.ts\")"
+      "Bash(del \"D:\\\\myinventory\\\\WEB\\\\hooks\\\\useSignalingPresence.ts\")",
+      "Bash(ls:*)",
+      "Bash(powershell -Command \"Get-ChildItem -Path app/api/ml -Filter ''*.ts'' -Recurse | ForEach-Object { \\(Get-Content $_FullName\\) -replace ''extractAuthFromRequest'', ''getAuthFromRequest'' | Set-Content $_FullName }\")",
+      "Bash(while read file)",
+      "Bash(do sed -i 's/extractAuthFromRequest/getAuthFromRequest/g' \"$file\")",
+      "Bash(done)",
+      "Bash(npx next build)"
     ],
     "deny": [],
     "ask": []

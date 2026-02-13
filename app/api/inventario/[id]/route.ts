@@ -41,41 +41,35 @@ export async function GET(
       );
     }
 
-    // Agregações para endereços (totais e concluídos)
+    // Buscar todos os endereços para contagem precisa
     let totalAddresses = inventoryData.total_addresses || 0;
     let addressesCompleted = inventoryData.addresses_completed || 0;
 
     try {
-      // Contar endereços totais
-      const { count: totalCount, error: totalError } = await supabaseAdmin
+      const { data: addressesData, error: addressesError } = await supabaseAdmin
         .from('inventory_addresses')
-        .select('*', { count: 'exact', head: true })
+        .select('id, status')
         .eq('inventory_id', inventoryId);
 
-      if (!totalError && totalCount !== null) {
-        totalAddresses = totalCount;
-      }
-
-      // Contar endereços completados
-      const { count: completedCount, error: completedError } = await supabaseAdmin
-        .from('inventory_addresses')
-        .select('*', { count: 'exact', head: true })
-        .eq('inventory_id', inventoryId)
-        .eq('status', 'completed');
-
-      if (!completedError && completedCount !== null) {
-        addressesCompleted = completedCount;
+      if (!addressesError && addressesData) {
+        totalAddresses = addressesData.length;
+        addressesCompleted = addressesData.filter(addr => addr.status === 'completed').length;
       }
     } catch (err) {
-      // fallback silencioso se count falhar
+      // fallback silencioso se query falhar
       console.error('[Inventory GET] Aggregate count fallback:', err);
     }
 
     const inventory = {
       id: inventoryData.id,
-      ...inventoryData,
+      name: inventoryData.name,
+      storeId: inventoryData.store_id,
+      status: inventoryData.status,
       totalAddresses,
       addressesCompleted,
+      totalItemsExpected: inventoryData.total_items_expected || 0,
+      totalItemsCounted: inventoryData.total_items_counted || 0,
+      importedFileName: inventoryData.imported_file_name,
       createdAt: new Date(inventoryData.created_at),
       updatedAt: new Date(inventoryData.updated_at),
       importedAt: inventoryData.imported_at ? new Date(inventoryData.imported_at) : null,
