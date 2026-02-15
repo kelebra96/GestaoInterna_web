@@ -7,7 +7,8 @@ import { UserRole } from './types/business';
 
 const PUBLIC_ROUTES = ['/login', '/reset-password', '/criar-conta'];
 
-export function isPublicRoute(pathname: string): boolean {
+export function isPublicRoute(pathname: string | null): boolean {
+  if (!pathname) return false;
   return PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(route + '/'));
 }
 
@@ -56,7 +57,9 @@ export const ALLOWED_ROUTES: Record<UserRole, string[]> = {
 /**
  * Verifica se o usuário tem permissão para acessar uma rota
  */
-export function canAccessRoute(userRole: UserRole | undefined, pathname: string): boolean {
+export function canAccessRoute(userRole: UserRole | undefined, pathname: string | null): boolean {
+  if (!pathname) return false;
+
   if (isPublicRoute(pathname)) {
     return true;
   }

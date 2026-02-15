@@ -1,0 +1,278 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. AUTHENTICATION AND RBAC MODELS
+
+enum Role {
+  super_admin
+  admin_rede
+  gestor_loja
+  merchandiser
+  repositor
+}
+
+model User {
+  id String @id @default(uuid())
+  name          String
+  email         String   @unique
+  passwordHash  String
+  role          Role
+  orgId         String   // Removido  - pode ser ID do Firestore ou MongoDB
+  storeIds      String[] // Removido  - pode ser ID do Firestore ou MongoDB
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// 2. CORE BUSINESS MODELS
+
+model Organization {
+  id String @id @default(uuid())
+  name      String
+  slug      String   @unique
+  country   String
+  timezone  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Store {
+  id String @id @default(uuid())
+  orgId          String   // Removido  - pode ser ID do Firestore ou MongoDB
+  name           String
+  code           String   @unique
+  address        String
+  city           String
+  region         String
+  userIds        String[] // Removido  - pode ser ID do Firestore ou MongoDB
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Product {
+  id String @id @default(uuid())
+  orgId            String   // Removido  - pode ser ID do Firestore ou MongoDB
+  sku              String   @unique
+  ean              String?  @unique
+  name             String
+  brand            String
+  category         String
+  subcategory      String?
+  width            Float    @map("width_cm")
+  height           Float    @map("height_cm")
+  depth            Float    @map("depth_cm")
+  price            Float    @map("preco_venda")
+  margin           Float    @map("margem_percentual")
+  imageUrl         String?
+  canStack         Boolean  @default(false) @map("pode_empilhar")
+  maxStackVertical Int?     @map("max_camadas_vertical")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  planogramSlots     PlanogramSlot[]
+  hourlySales        HourlySale[]
+  ruptureEvents      RuptureEvent[]
+  inventorySnapshots InventorySnapshot[]
+}
+
+// 3. PLANOGRAM AND SHELF STRUCTURE MODELS
+
+enum PlanogramType {
+  normal
+  promocional
+  sazonal
+  evento
+}
+
+enum PlanogramStatus {
+  rascunho
+  publicado
+  em_revisao
+  arquivado
+}
+
+enum ShelfLevel {
+  eyes
+  hands
+  feet
+}
+
+model Shelf {
+  id String @id @default(uuid())
+  storeId         String   // Removido  - pode ser ID do Firestore ou MongoDB
+  gondolaCode     String
+  width           Float    @map("largura_util_cm")
+  depth           Float    @map("profundidade_util_cm")
+  height          Float    @map("altura_livre_cm")
+  level           ShelfLevel
+  slots           PlanogramSlot[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model PlanogramSlot {
+  id String @id @default(uuid())
+  shelfId         String   
+  shelf           Shelf    @relation(fields: [shelfId], references: [id])
+  productId       String   
+  product         Product  @relation(fields: [productId], references: [id])
+  planogramBaseId String?  
+  planogramBase   PlanogramBase? @relation(fields: [planogramBaseId], references: [id])
+  planogramStoreId String? 
+  planogramStore  PlanogramStore? @relation(fields: [planogramStoreId], references: [id])
+  positionX       Float    @map("posicao_x_cm")
+  width           Float    @map("largura_slot_cm")
+  facings         Int      @map("facings_definidos")
+  capacity        Int?     @map("capacidade_total_slot")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  gondolaStockReadings GondolaStockReading[]
+  ruptureEvents        RuptureEvent[]
+}
+
+model PlanogramBase {
+  id String @id @default(uuid())
+  orgId       String          // Removido  para aceitar IDs do Firestore
+  name        String
+  description String?
+  type        PlanogramType
+  category    String
+  status      PlanogramStatus @default(rascunho)
+  totalSKUs   Int?            @default(0)
+  modules     Json?           // Array de módulos em formato JSON
+  version     Int             @default(1)
+  slots       PlanogramSlot[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model PlanogramStore {
+  id String @id @default(uuid())
+  orgId           String          // Removido  para aceitar IDs do Firestore
+  storeId         String          // Removido  para aceitar IDs do Firestore
+  basePlanogramId String          
+  name            String
+  status          PlanogramStatus @default(rascunho)
+  slots           PlanogramSlot[]
+  adjustments     Json // Using Json for StoreAdjustment
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+// 4. COMPLIANCE AND EXECUTION MODELS
+
+enum ComplianceTaskStatus {
+  pending
+  in_progress
+  completed
+  overdue
+}
+
+model ComplianceTask {
+  id String @id @default(uuid())
+  orgId            String               // Removido  - pode ser ID do Firestore ou MongoDB
+  storeId          String               // Removido  - pode ser ID do Firestore ou MongoDB
+  planogramStoreId String               
+  dueDate          DateTime
+  status           ComplianceTaskStatus @default(pending)
+  assignedTo       String                // userId
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+}
+
+model ComplianceExecution {
+  id String @id @default(uuid())
+  orgId            String   // Removido  - pode ser ID do Firestore ou MongoDB
+  storeId          String   // Removido  - pode ser ID do Firestore ou MongoDB
+  planogramStoreId String   
+  moduleId         String
+  taskId           String   
+  imageUrl         String
+  aiScore          Float?
+  aiFindings       Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// 5. INVENTORY, SALES, AND RUPTURE MODELS
+
+enum InventorySource {
+  csv
+  api
+  manual_count
+  computer_vision
+}
+
+model InventorySnapshot {
+  id String @id @default(uuid())
+  orgId      String          // Removido  - pode ser ID do Firestore ou MongoDB
+  storeId    String          // Removido  - pode ser ID do Firestore ou MongoDB
+  productId  String          
+  product    Product         @relation(fields: [productId], references: [id])
+  quantity   Int
+  snapshotAt DateTime
+  source     InventorySource
+}
+
+model GondolaStockReading {
+  id String @id @default(uuid())
+  storeId     String          // Removido  - pode ser ID do Firestore ou MongoDB
+  slotId      String          
+  slot        PlanogramSlot   @relation(fields: [slotId], references: [id])
+  quantity    Int             @map("quantidade_atual_slot")
+  source      InventorySource @map("origem_leitura")
+  readAt      DateTime        @map("data_hora_leitura")
+}
+
+model HourlySale {
+  id String @id @default(uuid())
+  storeId   String   // Removido  - pode ser ID do Firestore ou MongoDB
+  productId String   
+  product   Product  @relation(fields: [productId], references: [id])
+  date      DateTime
+  hour      Int
+  quantity  Int      @map("vendas_unidades")
+}
+
+enum RuptureType {
+  total
+  functional
+}
+
+model RuptureEvent {
+  id String @id @default(uuid())
+  storeId           String      // Removido  - pode ser ID do Firestore ou MongoDB
+  productId         String      
+  product           Product     @relation(fields: [productId], references: [id])
+  slotId            String      
+  slot              PlanogramSlot @relation(fields: [slotId], references: [id])
+  startAt           DateTime    @map("data_hora_inicio")
+  endAt             DateTime?   @map("data_hora_fim")
+  type              RuptureType @map("tipo_ruptura")
+  durationHours     Float?      @map("duracao_ruptura_horas")
+  unitsNotSold      Float?      @map("unidades_nao_vendidas")
+  revenueLost       Float?      @map("receita_perdida")
+  marginLost        Float?      @map("margem_perdida")
+}
+
+model Promotion {
+  id String @id @default(uuid())
+  orgId            String   // Removido  - pode ser ID do Firestore ou MongoDB
+  name             String
+  startDate        DateTime
+  endDate          DateTime
+  affectedStoreIds String[] // Removido  - pode ser ID do Firestore ou MongoDB
+  planogramPromoId String   
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}

@@ -153,6 +153,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Redirecionar para login se não autenticado e controlar acesso por perfil
   useEffect(() => {
+    // Aguardar pathname estar disponível
+    if (!pathname) return;
+
     if (!loading && !user && !isPublicRoute(pathname)) {
       router.push('/login');
       return;

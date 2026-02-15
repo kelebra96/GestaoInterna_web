@@ -77,7 +77,13 @@
       "Bash(do sed -i 's/extractAuthFromRequest/getAuthFromRequest/g' \"$file\")",
       "Bash(done)",
       "Bash(npx next build)",
-      "Bash(git ls-files:*)"
+      "Bash(git ls-files:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(node:*)",
+      "Bash(del \"D:\\\\myinventory\\\\WEB\\\\test-redis.js\")"
     ],
     "deny": [],
     "ask": []

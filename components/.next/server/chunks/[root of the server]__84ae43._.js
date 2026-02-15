@@ -1,0 +1,966 @@
+module.exports = {
+
+"[externals]/ [external] (next/dist/compiled/next-server/app-route.runtime.dev.js, cjs)": (function(__turbopack_context__) {
+
+var { r: __turbopack_require__, f: __turbopack_module_context__, i: __turbopack_import__, s: __turbopack_esm__, v: __turbopack_export_value__, n: __turbopack_export_namespace__, c: __turbopack_cache__, M: __turbopack_modules__, l: __turbopack_load__, j: __turbopack_dynamic__, P: __turbopack_resolve_absolute_path__, U: __turbopack_relative_url__, R: __turbopack_resolve_module_id_path__, b: __turbopack_worker_blob_url__, g: global, __dirname, x: __turbopack_external_require__, y: __turbopack_external_import__, m: module, e: exports, t: require } = __turbopack_context__;
+{
+const mod = __turbopack_external_require__("next/dist/compiled/next-server/app-route.runtime.dev.js");
+
+module.exports = mod;
+}}),
+"[externals]/ [external] (@opentelemetry/api, cjs)": (function(__turbopack_context__) {
+
+var { r: __turbopack_require__, f: __turbopack_module_context__, i: __turbopack_import__, s: __turbopack_esm__, v: __turbopack_export_value__, n: __turbopack_export_namespace__, c: __turbopack_cache__, M: __turbopack_modules__, l: __turbopack_load__, j: __turbopack_dynamic__, P: __turbopack_resolve_absolute_path__, U: __turbopack_relative_url__, R: __turbopack_resolve_module_id_path__, b: __turbopack_worker_blob_url__, g: global, __dirname, x: __turbopack_external_require__, y: __turbopack_external_import__, m: module, e: exports, t: require } = __turbopack_context__;
+{
+const mod = __turbopack_external_require__("@opentelemetry/api");
+
+module.exports = mod;
+}}),
+"[externals]/ [external] (next/dist/compiled/next-server/app-page.runtime.dev.js, cjs)": (function(__turbopack_context__) {
+
+var { r: __turbopack_require__, f: __turbopack_module_context__, i: __turbopack_import__, s: __turbopack_esm__, v: __turbopack_export_value__, n: __turbopack_export_namespace__, c: __turbopack_cache__, M: __turbopack_modules__, l: __turbopack_load__, j: __turbopack_dynamic__, P: __turbopack_resolve_absolute_path__, U: __turbopack_relative_url__, R: __turbopack_resolve_module_id_path__, b: __turbopack_worker_blob_url__, g: global, __dirname, x: __turbopack_external_require__, y: __turbopack_external_import__, m: module, e: exports, t: require } = __turbopack_context__;
+{
+const mod = __turbopack_external_require__("next/dist/compiled/next-server/app-page.runtime.dev.js");
+
+module.exports = mod;
+}}),
+"[externals]/ [external] (next/dist/server/app-render/work-unit-async-storage.external.js, cjs)": (function(__turbopack_context__) {
+
+var { r: __turbopack_require__, f: __turbopack_module_context__, i: __turbopack_import__, s: __turbopack_esm__, v: __turbopack_export_value__, n: __turbopack_export_namespace__, c: __turbopack_cache__, M: __turbopack_modules__, l: __turbopack_load__, j: __turbopack_dynamic__, P: __turbopack_resolve_absolute_path__, U: __turbopack_relative_url__, R: __turbopack_resolve_module_id_path__, b: __turbopack_worker_blob_url__, g: global, __dirname, x: __turbopack_external_require__, y: __turbopack_external_import__, m: module, e: exports, t: require } = __turbopack_context__;
+{
+const mod = __turbopack_external_require__("next/dist/server/app-render/work-unit-async-storage.external.js");
+
+module.exports = mod;
+}}),
+"[externals]/ [external] (next/dist/server/app-render/work-async-storage.external.js, cjs)": (function(__turbopack_context__) {
+
+var { r: __turbopack_require__, f: __turbopack_module_context__, i: __turbopack_import__, s: __turbopack_esm__, v: __turbopack_export_value__, n: __turbopack_export_namespace__, c: __turbopack_cache__, M: __turbopack_modules__, l: __turbopack_load__, j: __turbopack_dynamic__, P: __turbopack_resolve_absolute_path__, U: __turbopack_relative_url__, R: __turbopack_resolve_module_id_path__, b: __turbopack_worker_blob_url__, g: global, __dirname, x: __turbopack_external_require__, y: __turbopack_external_import__, m: module, e: exports, t: require } = __turbopack_context__;
+{
+const mod = __turbopack_external_require__("next/dist/server/app-render/work-async-storage.external.js");
+
+module.exports = mod;
+}}),
+"[project]/lib/supabase-admin.ts [app-route] (ecmascript)": ((__turbopack_context__) => {
+"use strict";
+
+var { r: __turbopack_require__, f: __turbopack_module_context__, i: __turbopack_import__, s: __turbopack_esm__, v: __turbopack_export_value__, n: __turbopack_export_namespace__, c: __turbopack_cache__, M: __turbopack_modules__, l: __turbopack_load__, j: __turbopack_dynamic__, P: __turbopack_resolve_absolute_path__, U: __turbopack_relative_url__, R: __turbopack_resolve_module_id_path__, b: __turbopack_worker_blob_url__, g: global, __dirname, x: __turbopack_external_require__, y: __turbopack_external_import__, z: require } = __turbopack_context__;
+{
+__turbopack_esm__({
+    "createCompany": (()=>createCompany),
+    "createStore": (()=>createStore),
+    "createUser": (()=>createUser),
+    "default": (()=>__TURBOPACK__default__export__),
+    "deleteUser": (()=>deleteUser),
+    "getAllCompanies": (()=>getAllCompanies),
+    "getAllStores": (()=>getAllStores),
+    "getAllUsers": (()=>getAllUsers),
+    "getCompanyById": (()=>getCompanyById),
+    "getStoreById": (()=>getStoreById),
+    "getStoresByCompany": (()=>getStoresByCompany),
+    "getUserById": (()=>getUserById),
+    "getUsersByCompany": (()=>getUsersByCompany),
+    "supabaseAdmin": (()=>supabaseAdmin),
+    "updateCompany": (()=>updateCompany),
+    "updateStore": (()=>updateStore),
+    "updateUser": (()=>updateUser),
+    "verifyToken": (()=>verifyToken)
+});
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_import__("[project]/node_modules/@supabase/supabase-js/dist/index.mjs [app-route] (ecmascript) <locals>");
+;
+// URL e Service Key do Supabase (server-side only)
+const supabaseUrl = process.env.SUPABASE_URL || ("TURBOPACK compile-time value", "https://eetduqcmjucslzedsotg.supabase.co") || 'http://kong:8000';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_KEY || '';
+if (!supabaseServiceKey) {
+    console.warn('??  SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY not set - admin client will not work');
+}
+const supabaseAdmin = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$supabase$2f$supabase$2d$js$2f$dist$2f$index$2e$mjs__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createClient"])(supabaseUrl, supabaseServiceKey, {
+    auth: {
+        autoRefreshToken: false,
+        persistSession: false
+    }
+});
+function mapUserRow(row) {
+    const lastSeen = row.last_seen ?? null;
+    const isOnline = lastSeen ? Date.now() - new Date(lastSeen).getTime() < 5 * 60 * 1000 : false;
+    return {
+        id: row.id,
+        email: row.email,
+        displayName: row.display_name || row.email || 'Sem nome',
+        role: row.role,
+        companyId: row.company_id,
+        storeId: row.store_id,
+        storeIds: Array.isArray(row.store_ids) ? row.store_ids : row.store_id ? [
+            row.store_id
+        ] : [],
+        active: row.active !== false,
+        createdAt: row.created_at,
+        lastSeen,
+        isOnline
+    };
+}
+function mapCompanyRow(row) {
+    return {
+        id: row.id,
+        name: row.name,
+        tradingName: row.trading_name ?? undefined,
+        cnpj: row.cnpj ?? undefined,
+        active: row.active !== false,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+    };
+}
+function mapStoreRow(row) {
+    return {
+        id: row.id,
+        name: row.name,
+        code: row.code,
+        companyId: row.company_id,
+        managerId: row.manager_id ?? null,
+        agentId: row.agent_id ?? null,
+        address: row.address ?? undefined,
+        city: row.city ?? undefined,
+        state: row.state ?? undefined,
+        active: row.active !== false,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+    };
+}
+async function getAllUsers() {
+    const { data, error } = await supabaseAdmin.from('users').select('*').order('created_at', {
+        ascending: false
+    });
+    if (error) throw error;
+    return (data || []).map(mapUserRow);
+}
+async function getUserById(userId) {
+    const { data, error } = await supabaseAdmin.from('users').select('*').eq('id', userId).single();
+    if (error) throw error;
+    return mapUserRow(data);
+}
+async function getUsersByCompany(companyId) {
+    const { data, error } = await supabaseAdmin.from('users').select('*').eq('company_id', companyId).order('created_at', {
+        ascending: false
+    });
+    if (error) throw error;
+    return (data || []).map(mapUserRow);
+}
+async function createUser(user) {
+    const payload = {
+        id: user.id,
+        email: user.email,
+        display_name: user.displayName ?? null,
+        role: user.role,
+        company_id: user.companyId ?? null,
+        store_id: user.storeId ?? null,
+        store_ids: user.storeIds ?? (user.storeId ? [
+            user.storeId
+        ] : []),
+        active: user.active ?? true
+    };
+    const { data, error } = await supabaseAdmin.from('users').insert(payload).select().single();
+    if (error) throw error;
+    return mapUserRow(data);
+}
+async function updateUser(userId, updates) {
+    const payload = {
+        display_name: updates.displayName,
+        role: updates.role,
+        company_id: updates.companyId ?? undefined,
+        store_id: updates.storeId ?? undefined,
+        store_ids: updates.storeIds,
+        active: typeof updates.active === 'boolean' ? updates.active : undefined,
+        updated_at: new Date().toISOString()
+    };
+    const { data, error } = await supabaseAdmin.from('users').update(payload).eq('id', userId).select().single();
+    if (error) throw error;
+    return mapUserRow(data);
+}
+async function deleteUser(userId) {
+    const { error } = await supabaseAdmin.from('users').delete().eq('id', userId);
+    if (error) throw error;
+}
+async function getAllCompanies() {
+    const { data, error } = await supabaseAdmin.from('companies').select('*').order('name', {
+        ascending: true
+    });
+    if (error) throw error;
+    return (data || []).map(mapCompanyRow);
+}
+async function getCompanyById(companyId) {
+    const { data, error } = await supabaseAdmin.from('companies').select('*').eq('id', companyId).single();
+    if (error) throw error;
+    return mapCompanyRow(data);
+}
+async function createCompany(company) {
+    const payload = {
+        id: company.id,
+        name: company.name,
+        trading_name: company.tradingName ?? null,
+        cnpj: company.cnpj ?? null,
+        active: company.active ?? true
+    };
+    const { data, error } = await supabaseAdmin.from('companies').insert(payload).select().single();
+    if (error) throw error;
+    return mapCompanyRow(data);
+}
+async function updateCompany(companyId, updates) {
+    const payload = {
+        name: updates.name,
+        trading_name: updates.tradingName ?? undefined,
+        cnpj: updates.cnpj ?? undefined,
+        active: typeof updates.active === 'boolean' ? updates.active : undefined,
+        updated_at: new Date().toISOString()
+    };
+    const { data, error } = await supabaseAdmin.from('companies').update(payload).eq('id', companyId).select().single();
+    if (error) throw error;
+    return mapCompanyRow(data);
+}
+async function getAllStores() {
+    const { data, error } = await supabaseAdmin.from('stores').select('*').order('name', {
+        ascending: true
+    });
+    if (error) throw error;
+    return (data || []).map(mapStoreRow);
+}
+async function getStoresByCompany(companyId) {
+    const { data, error } = await supabaseAdmin.from('stores').select('*').eq('company_id', companyId).order('name', {
+        ascending: true
+    });
+    if (error) throw error;
+    return (data || []).map(mapStoreRow);
+}
+async function getStoreById(storeId) {
+    const { data, error } = await supabaseAdmin.from('stores').select('*').eq('id', storeId).single();
+    if (error) throw error;
+    return mapStoreRow(data);
+}
+async function createStore(store) {
+    const payload = {
+        id: store.id,
+        name: store.name,
+        code: store.code,
+        company_id: store.companyId,
+        manager_id: store.managerId ?? null,
+        agent_id: store.agentId ?? null,
+        address: store.address ?? null,
+        city: store.city ?? null,
+        state: store.state ?? null,
+        active: store.active ?? true
+    };
+    const { data, error } = await supabaseAdmin.from('stores').insert(payload).select().single();
+    if (error) throw error;
+    return mapStoreRow(data);
+}
+async function updateStore(storeId, updates) {
+    const payload = {
+        name: updates.name,
+        code: updates.code,
+        company_id: updates.companyId,
+        manager_id: updates.managerId ?? undefined,
+        agent_id: updates.agentId ?? undefined,
+        address: updates.address ?? undefined,
+        city: updates.city ?? undefined,
+        state: updates.state ?? undefined,
+        active: typeof updates.active === 'boolean' ? updates.active : undefined,
+        updated_at: new Date().toISOString()
+    };
+    const { data, error } = await supabaseAdmin.from('stores').update(payload).eq('id', storeId).select().single();
+    if (error) throw error;
+    return mapStoreRow(data);
+}
+async function verifyToken(token) {
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    if (error) throw error;
+    return user;
+}
+const __TURBOPACK__default__export__ = supabaseAdmin;
+}}),
+"[project]/app/api/dashboard/route.ts [app-route] (ecmascript)": ((__turbopack_context__) => {
+"use strict";
+
+var { r: __turbopack_require__, f: __turbopack_module_context__, i: __turbopack_import__, s: __turbopack_esm__, v: __turbopack_export_value__, n: __turbopack_export_namespace__, c: __turbopack_cache__, M: __turbopack_modules__, l: __turbopack_load__, j: __turbopack_dynamic__, P: __turbopack_resolve_absolute_path__, U: __turbopack_relative_url__, R: __turbopack_resolve_module_id_path__, b: __turbopack_worker_blob_url__, g: global, __dirname, x: __turbopack_external_require__, y: __turbopack_external_import__, z: require } = __turbopack_context__;
+{
+__turbopack_esm__({
+    "GET": (()=>GET),
+    "dynamic": (()=>dynamic),
+    "revalidate": (()=>revalidate)
+});
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_import__("[project]/node_modules/next/server.js [app-route] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2d$admin$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_import__("[project]/lib/supabase-admin.ts [app-route] (ecmascript)");
+;
+;
+const dynamic = 'force-dynamic';
+const revalidate = 0;
+async function GET() {
+    console.log('[DASHBOARD] GET request received');
+    try {
+        console.log('[DASHBOARD] Starting data fetch');
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        // Buscar todas as solicitações (excluindo rascunhos)
+        const { data: solicitacoesDataResponse, error: solicitacoesError } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2d$admin$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from('solicitacoes').select('*').neq('status', 'draft');
+        let solicitacoesData = [];
+        if (solicitacoesError) {
+            if (solicitacoesError.code === 'PGRST205') {
+                console.warn('[DASHBOARD] Tabela solicitacoes não encontrada, retornando dados vazios.');
+            } else {
+                throw solicitacoesError;
+            }
+        } else {
+            solicitacoesData = solicitacoesDataResponse || [];
+        }
+        const totalSolicitacoes = solicitacoesData.length;
+        // Contar solicitações por status
+        const statusCounters = {
+            pending: 0,
+            batched: 0,
+            closed: 0
+        };
+        const solicitacoesRecentes = [];
+        const solicitacoesPorDia = {};
+        const produtosContagem = {};
+        // Rankings: contagem de itens
+        const itensPorLoja = {};
+        const itensPorComprador = {};
+        const itensPorProduto = {};
+        // Cache de usuários, lojas e produtos para evitar consultas duplicadas
+        const usersCache = {};
+        const storesCache = {};
+        const produtoCache = new Map();
+        const getUserName = async (userId)=>{
+            if (!userId) return 'Desconhecido';
+            if (usersCache[userId] !== undefined) {
+                return usersCache[userId]?.name || 'Desconhecido';
+            }
+            try {
+                const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2d$admin$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from('users').select('display_name, role').eq('id', userId).single();
+                if (!error && data) {
+                    const userName = data.display_name || 'Desconhecido';
+                    usersCache[userId] = {
+                        name: userName,
+                        role: data.role || 'unknown'
+                    };
+                    return userName;
+                }
+            } catch (error) {
+                console.error('Error fetching user:', userId, error);
+            }
+            usersCache[userId] = null;
+            return 'Desconhecido';
+        };
+        const getStoreName = async (storeId)=>{
+            if (!storeId) return 'Desconhecida';
+            if (storesCache[storeId]) return storesCache[storeId];
+            try {
+                const { data, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2d$admin$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from('stores').select('name').eq('id', storeId).single();
+                if (!error && data) {
+                    storesCache[storeId] = data.name;
+                    return data.name;
+                }
+            } catch (error) {
+                console.error('Error fetching store:', error);
+            }
+            storesCache[storeId] = 'Desconhecida';
+            return 'Desconhecida';
+        };
+        const getProdutoInfo = async (productId, ean)=>{
+            const cacheKey = productId || (ean ? `ean:${ean}` : undefined);
+            if (cacheKey && produtoCache.has(cacheKey)) return produtoCache.get(cacheKey);
+            let data;
+            // Buscar por ID primeiro
+            if (productId) {
+                try {
+                    const { data: prodData, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2d$admin$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from('products').select('*').eq('id', productId).single();
+                    if (!error && prodData) data = prodData;
+                } catch (error) {
+                    console.error('Error fetching product by id:', error);
+                }
+            }
+            // Se não encontrou, buscar por EAN
+            if (!data && ean) {
+                try {
+                    const { data: prodData, error } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2d$admin$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from('products').select('*').or(`id.eq.${ean},ean.eq.${ean}`).limit(1).single();
+                    if (!error && prodData) data = prodData;
+                } catch (error) {
+                    console.error('Error fetching product by EAN:', error);
+                }
+            }
+            if (!data) return undefined;
+            const info = {
+                name: data.nome || data.name || data.descricao || data.description || data.ean || 'Produto Desconhecido',
+                ean: data.ean || ean,
+                comprador: data.comprador || data.buyer || data.comprador_id || data.buyer_id
+            };
+            if (cacheKey) produtoCache.set(cacheKey, info);
+            return info;
+        };
+        let solicitacoesHoje = 0;
+        let solicitacoesOntem = 0;
+        let solicitacoesUltimos7Dias = 0;
+        let solicitacoesUltimos7a14Dias = 0;
+        let totalItens = 0;
+        // Métricas financeiras
+        let valorTotalSolicitado = 0; // Total R$ de todos os itens solicitados
+        let valorTotalAprovado = 0; // Total R$ de itens aprovados (economia gerada)
+        let valorTotalRejeitado = 0; // Total R$ de itens rejeitados
+        let valorTotalPendente = 0; // Total R$ de itens pendentes
+        let itensAprovados = 0;
+        let itensRejeitados = 0;
+        let itensPendentes = 0;
+        // Dados para projeção financeira
+        const valorPorDia = {};
+        const itensPorDiaStatus = {};
+        // Processar cada solicitação
+        for (const solicitacao of solicitacoesData || []){
+            const status = [
+                'pending',
+                'batched',
+                'closed'
+            ].includes(String(solicitacao.status)) ? solicitacao.status : 'pending';
+            if (status in statusCounters) statusCounters[status]++;
+            // Adicionar solicitações recentes (até 10)
+            if (solicitacoesRecentes.length < 10) {
+                const createdAt = new Date(solicitacao.created_at || new Date());
+                const userName = await getUserName(solicitacao.created_by);
+                const storeName = await getStoreName(solicitacao.store_id);
+                solicitacoesRecentes.push({
+                    id: solicitacao.id,
+                    status,
+                    createdAt: createdAt.toISOString(),
+                    userName,
+                    storeName,
+                    storeId: solicitacao.store_id
+                });
+            }
+            // Contar solicitações por dia (últimos 30 dias)
+            const createdAt = new Date(solicitacao.created_at);
+            if (createdAt >= thirtyDaysAgo) {
+                const dateKey = createdAt.toISOString().split('T')[0];
+                solicitacoesPorDia[dateKey] = (solicitacoesPorDia[dateKey] || 0) + 1;
+            }
+            // Contar solicitações por período
+            if (createdAt >= todayStart) solicitacoesHoje++;
+            if (createdAt >= yesterday && createdAt < todayStart) solicitacoesOntem++;
+            if (createdAt >= sevenDaysAgo) solicitacoesUltimos7Dias++;
+            if (createdAt >= new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000) && createdAt < sevenDaysAgo) {
+                solicitacoesUltimos7a14Dias++;
+            }
+            // Buscar itens da solicitação (substituindo subcollection por foreign key)
+            try {
+                const { data: itensData, error: itensError } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2d$admin$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from('solicitacao_itens').select('*').eq('solicitacao_id', solicitacao.id);
+                if (itensError || !itensData) continue;
+                const storeId = solicitacao.store_id;
+                for (const item of itensData){
+                    // Suportar tanto productId quanto EAN direto no item
+                    let productId = item.product_id || item.produto_id;
+                    const ean = item.ean;
+                    const descricao = item.descricao || item.description || item.nome || item.name;
+                    // Se não tem productId mas tem EAN, usar o EAN como identificador
+                    if (!productId && ean) {
+                        productId = ean;
+                    }
+                    // Se não tem nem productId nem EAN, usar a descrição como identificador
+                    if (!productId && descricao) {
+                        productId = `desc_${descricao.toLowerCase().replace(/[^a-z0-9]+/g, '_').substring(0, 50)}`;
+                    }
+                    // Buscar informações do produto para obter o comprador correto
+                    const produtoInfo = await getProdutoInfo(productId, ean);
+                    // PRIORIZAR o comprador do PRODUTO, depois item
+                    let compradorKey;
+                    let compradorNome;
+                    if (produtoInfo?.comprador) {
+                        const compradorValue = String(produtoInfo.comprador);
+                        compradorKey = compradorValue;
+                        // Verificar se parece ser um ID de usuário ou um nome direto
+                        if (compradorValue.length > 20 || compradorValue.includes('-')) {
+                            compradorNome = await getUserName(compradorValue);
+                        } else {
+                            compradorNome = compradorValue;
+                        }
+                    } else {
+                        const compradorId = item.comprador || item.comprador_id || item.buyer_id;
+                        if (compradorId) {
+                            const compradorValue = String(compradorId);
+                            compradorKey = compradorValue;
+                            if (compradorValue.length > 20 || compradorValue.includes('-')) {
+                                compradorNome = await getUserName(compradorValue);
+                            } else {
+                                compradorNome = compradorValue;
+                            }
+                        } else {
+                            compradorKey = 'sem_comprador';
+                            compradorNome = 'Sem Comprador Definido';
+                        }
+                    }
+                    // Só processar se tiver algum identificador
+                    if (productId) {
+                        totalItens++;
+                        // Calcular valor do item (preço * quantidade)
+                        const precoAtual = parseFloat(item.preco_atual) || 0;
+                        const quantidade = parseInt(item.qtd) || parseInt(item.quantidade) || 1;
+                        const valorItem = precoAtual * quantidade;
+                        const itemStatus = item.status || 'pending';
+                        // Métricas financeiras por status do item
+                        valorTotalSolicitado += valorItem;
+                        if (itemStatus === 'approved') {
+                            valorTotalAprovado += valorItem;
+                            itensAprovados++;
+                        } else if (itemStatus === 'rejected') {
+                            valorTotalRejeitado += valorItem;
+                            itensRejeitados++;
+                        } else {
+                            valorTotalPendente += valorItem;
+                            itensPendentes++;
+                        }
+                        // Acumular valor por dia para projeção
+                        const itemDate = new Date(item.created_at || solicitacao.created_at);
+                        const itemDateKey = itemDate.toISOString().split('T')[0];
+                        if (itemDate >= thirtyDaysAgo) {
+                            valorPorDia[itemDateKey] = (valorPorDia[itemDateKey] || 0) + valorItem;
+                            if (!itensPorDiaStatus[itemDateKey]) {
+                                itensPorDiaStatus[itemDateKey] = {
+                                    approved: 0,
+                                    rejected: 0,
+                                    pending: 0
+                                };
+                            }
+                            if (itemStatus === 'approved') {
+                                itensPorDiaStatus[itemDateKey].approved++;
+                            } else if (itemStatus === 'rejected') {
+                                itensPorDiaStatus[itemDateKey].rejected++;
+                            } else {
+                                itensPorDiaStatus[itemDateKey].pending++;
+                            }
+                        }
+                        // Contagem de produtos
+                        if (!produtosContagem[productId]) {
+                            const productName = produtoInfo?.name || descricao || 'Produto Desconhecido';
+                            const productEan = produtoInfo?.ean || ean;
+                            produtosContagem[productId] = {
+                                count: 0,
+                                name: productName,
+                                ean: productEan
+                            };
+                        }
+                        produtosContagem[productId].count++;
+                        // Ranking por produto
+                        if (!itensPorProduto[productId]) {
+                            const productName = produtoInfo?.name || descricao || 'Produto Desconhecido';
+                            const productEan = produtoInfo?.ean || ean;
+                            itensPorProduto[productId] = {
+                                count: 0,
+                                name: productName,
+                                ean: productEan
+                            };
+                        }
+                        itensPorProduto[productId].count++;
+                        // Ranking por loja
+                        if (storeId) {
+                            if (!itensPorLoja[storeId]) {
+                                const storeName = await getStoreName(storeId);
+                                itensPorLoja[storeId] = {
+                                    count: 0,
+                                    name: storeName
+                                };
+                            }
+                            itensPorLoja[storeId].count++;
+                        }
+                        // Ranking por comprador
+                        if (compradorKey) {
+                            if (!itensPorComprador[compradorKey]) {
+                                itensPorComprador[compradorKey] = {
+                                    count: 0,
+                                    name: compradorNome || 'Comprador Desconhecido'
+                                };
+                            }
+                            itensPorComprador[compradorKey].count++;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching items for solicitação:', solicitacao.id, error);
+            }
+        }
+        // Ordenar solicitações recentes por data
+        solicitacoesRecentes.sort((a, b)=>new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        // Buscar todos os usuários
+        const { data: usersData, error: usersError } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2d$admin$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from('users').select('*');
+        if (usersError) throw usersError;
+        const totalUsuarios = usersData?.length || 0;
+        const usuariosAtivos = usersData?.filter((u)=>u.active !== false).length || 0;
+        // Contar solicitações por loja
+        const solicitacoesPorLojaMap = {};
+        for (const sol of solicitacoesData || []){
+            const storeId = sol.store_id;
+            if (storeId) {
+                if (!solicitacoesPorLojaMap[storeId]) {
+                    const storeName = await getStoreName(storeId);
+                    solicitacoesPorLojaMap[storeId] = {
+                        count: 0,
+                        name: storeName
+                    };
+                }
+                solicitacoesPorLojaMap[storeId].count++;
+            }
+        }
+        // Converter para array e ordenar por contagem
+        const solicitacoesPorLoja = Object.entries(solicitacoesPorLojaMap).map(([storeId, data])=>({
+                storeId,
+                storeName: data.name,
+                count: data.count
+            })).sort((a, b)=>b.count - a.count);
+        // Buscar lojas
+        const { data: storesData, error: storesError } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2d$admin$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from('stores').select('*');
+        if (storesError) throw storesError;
+        const totalLojas = storesData?.length || 0;
+        // Lojas com 50+ profissionais
+        const usuariosPorLoja = {};
+        usersData?.forEach((u)=>{
+            const storeKey = u.store_id || u.loja_id || u.store || u.loja;
+            if (storeKey) {
+                const key = String(storeKey);
+                usuariosPorLoja[key] = (usuariosPorLoja[key] || 0) + 1;
+            }
+        });
+        const lojasCom50MaisProfissionais = Object.values(usuariosPorLoja).filter((n)=>n >= 50).length;
+        // Converter solicitações por dia em array para gráfico
+        const chartData = Object.entries(solicitacoesPorDia).map(([date, count])=>({
+                date,
+                count
+            })).sort((a, b)=>a.date.localeCompare(b.date));
+        // Calcular KPIs adicionais
+        const mediaItensPorSolicitacao = totalSolicitacoes > 0 ? (totalItens / totalSolicitacoes).toFixed(1) : '0';
+        const solicitacoesProcessadas = statusCounters.closed + statusCounters.batched;
+        const taxaConversao = totalSolicitacoes > 0 ? Number((solicitacoesProcessadas / totalSolicitacoes * 100).toFixed(1)) : 0;
+        const mudancaHoje = solicitacoesOntem > 0 ? ((solicitacoesHoje - solicitacoesOntem) / solicitacoesOntem * 100).toFixed(0) : '0';
+        const mudancaSemanal = solicitacoesUltimos7a14Dias > 0 ? ((solicitacoesUltimos7Dias - solicitacoesUltimos7a14Dias) / solicitacoesUltimos7a14Dias * 100).toFixed(0) : '0';
+        // Top produtos mais solicitados
+        const topProdutos = Object.entries(produtosContagem).map(([productId, data])=>({
+                productId,
+                productName: data.name,
+                count: data.count,
+                ean: data.ean
+            })).sort((a, b)=>b.count - a.count).slice(0, 10);
+        // Preparar dados de comparação de períodos (últimos 14 dias vs 14 dias anteriores)
+        const periodComparisonData = [];
+        for(let i = 0; i < 14; i++){
+            const currentDate = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+            const previousDate = new Date(now.getTime() - (i + 14) * 24 * 60 * 60 * 1000);
+            const currentKey = currentDate.toISOString().split('T')[0];
+            const previousKey = previousDate.toISOString().split('T')[0];
+            periodComparisonData.unshift({
+                date: currentKey,
+                current: solicitacoesPorDia[currentKey] || 0,
+                previous: solicitacoesPorDia[previousKey] || 0
+            });
+        }
+        // Gerar insights automáticos
+        const insights = [];
+        // Insight 1: Tendência de crescimento
+        if (parseFloat(mudancaSemanal) > 10) {
+            insights.push({
+                type: 'success',
+                title: 'Crescimento Acelerado',
+                description: `As solicitações cresceram ${mudancaSemanal}% na última semana comparado à semana anterior.`,
+                icon: 'trending-up'
+            });
+        } else if (parseFloat(mudancaSemanal) < -10) {
+            insights.push({
+                type: 'warning',
+                title: 'Redução de Atividade',
+                description: `As solicitações reduziram ${Math.abs(parseFloat(mudancaSemanal))}% na última semana.`,
+                icon: 'trending-down'
+            });
+        }
+        // Insight 2: Taxa de processamento
+        const taxaConversaoNum = taxaConversao;
+        if (taxaConversaoNum >= 95) {
+            insights.push({
+                type: 'success',
+                title: 'Taxa de Processamento Excelente',
+                description: `${taxaConversaoNum.toFixed(1)}% das solicitações foram processadas (em análise ou concluídas).`,
+                icon: 'check'
+            });
+        } else if (taxaConversaoNum >= 70) {
+            insights.push({
+                type: 'info',
+                title: 'Taxa de Processamento Sólida',
+                description: `${taxaConversaoNum.toFixed(1)}% das solicitações já estão processadas. Mantenha o ritmo para chegar em 95%+.`,
+                icon: 'trending-up'
+            });
+        } else if (taxaConversaoNum < 50) {
+            insights.push({
+                type: 'alert',
+                title: 'Taxa de Processamento Baixa',
+                description: `Apenas ${taxaConversaoNum.toFixed(1)}% das solicitações foram processadas. Revise o fluxo para destravar a fila.`,
+                icon: 'alert'
+            });
+        }
+        // Insight 3: Solicitações pendentes
+        const totalPendentes = statusCounters.pending;
+        const totalEmAnalise = statusCounters.batched;
+        if (totalPendentes === 0 && totalEmAnalise === 0) {
+            insights.push({
+                type: 'success',
+                title: 'Tudo Processado',
+                description: 'Não há solicitações pendentes. Todas foram analisadas.',
+                icon: 'check'
+            });
+        } else if (totalPendentes > 0 && totalPendentes > totalSolicitacoes * 0.3) {
+            insights.push({
+                type: 'warning',
+                title: 'Alto Volume Pendente',
+                description: `Existem ${totalPendentes} solicitações aguardando envio para análise (${(totalPendentes / totalSolicitacoes * 100).toFixed(0)}% do total).`,
+                icon: 'alert'
+            });
+        } else if (totalEmAnalise > 0) {
+            insights.push({
+                type: 'info',
+                title: 'Solicitações em Análise',
+                description: `${totalEmAnalise} solicitação(ões) agrupada(s) em ficha aguardando fechamento.`,
+                icon: 'info'
+            });
+        }
+        // Insight 4: Atividade de hoje
+        if (solicitacoesHoje > solicitacoesOntem) {
+            insights.push({
+                type: 'info',
+                title: 'Dia Mais Ativo',
+                description: `Hoje já foram registradas ${solicitacoesHoje} solicitações, ${solicitacoesHoje - solicitacoesOntem} a mais que ontem.`,
+                icon: 'zap'
+            });
+        }
+        // Insight 5: Top produto
+        if (topProdutos.length > 0) {
+            insights.push({
+                type: 'info',
+                title: 'Produto Mais Solicitado',
+                description: `"${topProdutos[0].productName}" lidera com ${topProdutos[0].count} solicitações.`,
+                icon: 'info'
+            });
+        }
+        // Insight 6: Concentração de atividade por loja
+        if (Object.keys(itensPorLoja).length > 0) {
+            const lojasSorted = Object.entries(itensPorLoja).sort((a, b)=>b[1].count - a[1].count);
+            const topLoja = lojasSorted[0];
+            const totalItensLojas = lojasSorted.reduce((sum, [_, data])=>sum + data.count, 0);
+            const percentualTopLoja = (topLoja[1].count / totalItensLojas * 100).toFixed(0);
+            if (parseFloat(percentualTopLoja) > 40) {
+                insights.push({
+                    type: 'warning',
+                    title: 'Alta Concentração em Uma Loja',
+                    description: `A loja "${topLoja[1].name}" representa ${percentualTopLoja}% de todos os itens solicitados. Considere distribuir melhor as demandas.`,
+                    icon: 'alert'
+                });
+            } else if (lojasSorted.length >= 3) {
+                const top3Total = lojasSorted.slice(0, 3).reduce((sum, [_, data])=>sum + data.count, 0);
+                const percentualTop3 = (top3Total / totalItensLojas * 100).toFixed(0);
+                insights.push({
+                    type: 'success',
+                    title: 'Distribuição Equilibrada',
+                    description: `As top 3 lojas representam ${percentualTop3}% das solicitações, indicando boa distribuição de atividade no sistema.`,
+                    icon: 'check'
+                });
+            }
+        }
+        // Preparar rankings (Top 50)
+        const rankingPorLoja = Object.entries(itensPorLoja).map(([id, data])=>({
+                id,
+                name: data.name,
+                count: data.count
+            })).sort((a, b)=>b.count - a.count).slice(0, 50);
+        const rankingPorComprador = Object.entries(itensPorComprador).map(([id, data])=>({
+                id,
+                name: data.name,
+                count: data.count
+            })).sort((a, b)=>b.count - a.count).slice(0, 50);
+        const rankingPorProduto = Object.entries(itensPorProduto).map(([id, data])=>{
+            let details = undefined;
+            if (data.ean) {
+                details = `EAN: ${data.ean}`;
+            } else if (id.startsWith('desc_')) {
+                details = 'Produto sem código de barras';
+            } else {
+                details = `ID: ${id}`;
+            }
+            return {
+                id,
+                name: data.name,
+                count: data.count,
+                details
+            };
+        }).sort((a, b)=>b.count - a.count).slice(0, 50);
+        // Calcular taxas de aprovação/rejeição
+        const totalItensProcessados = itensAprovados + itensRejeitados + itensPendentes;
+        const taxaAprovacao = totalItensProcessados > 0 ? Number((itensAprovados / totalItensProcessados * 100).toFixed(1)) : 0;
+        const taxaRejeicao = totalItensProcessados > 0 ? Number((itensRejeitados / totalItensProcessados * 100).toFixed(1)) : 0;
+        // Dados para gráfico de projeção financeira (últimos 30 dias + projeção 7 dias)
+        const valorChartData = Object.entries(valorPorDia).map(([date, valor])=>({
+                date,
+                valor: Number(valor.toFixed(2))
+            })).sort((a, b)=>a.date.localeCompare(b.date));
+        // Calcular média dos últimos 7 dias para projeção
+        const ultimosValores = valorChartData.slice(-7);
+        const mediaValorDiario = ultimosValores.length > 0 ? ultimosValores.reduce((sum, d)=>sum + d.valor, 0) / ultimosValores.length : 0;
+        // Gerar projeção para os próximos 7 dias
+        const projecaoFinanceira = [];
+        // Adicionar dados históricos
+        valorChartData.forEach((d)=>{
+            projecaoFinanceira.push({
+                date: d.date,
+                valor: d.valor,
+                projetado: false
+            });
+        });
+        // Adicionar projeção
+        for(let i = 1; i <= 7; i++){
+            const futureDate = new Date(now.getTime() + i * 24 * 60 * 60 * 1000);
+            const futureDateKey = futureDate.toISOString().split('T')[0];
+            // Aplicar tendência de crescimento na projeção
+            const tendencia = parseFloat(mudancaSemanal) / 100;
+            const valorProjetado = mediaValorDiario * (1 + tendencia * i / 7);
+            projecaoFinanceira.push({
+                date: futureDateKey,
+                valor: Number(valorProjetado.toFixed(2)),
+                projetado: true
+            });
+        }
+        // Dados de status de itens por dia para gráfico
+        const itensStatusChartData = Object.entries(itensPorDiaStatus).map(([date, status])=>({
+                date,
+                aprovados: status.approved,
+                rejeitados: status.rejected,
+                pendentes: status.pending
+            })).sort((a, b)=>a.date.localeCompare(b.date));
+        // Análise de Pareto financeira (top produtos por valor)
+        const produtosComValor = {};
+        // Calcular valor total por produto (necessário nova iteração)
+        for (const solicitacao of solicitacoesData || []){
+            try {
+                const { data: itensData } = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$supabase$2d$admin$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["supabaseAdmin"].from('solicitacao_itens').select('*').eq('solicitacao_id', solicitacao.id);
+                if (!itensData) continue;
+                for (const item of itensData){
+                    let productId = item.product_id || item.produto_id || item.ean;
+                    const descricao = item.descricao || item.description || item.nome;
+                    if (!productId && descricao) {
+                        productId = `desc_${descricao.toLowerCase().replace(/[^a-z0-9]+/g, '_').substring(0, 50)}`;
+                    }
+                    if (productId) {
+                        const precoAtual = parseFloat(item.preco_atual) || 0;
+                        const quantidade = parseInt(item.qtd) || parseInt(item.quantidade) || 1;
+                        const valorItem = precoAtual * quantidade;
+                        if (!produtosComValor[productId]) {
+                            produtosComValor[productId] = {
+                                count: 0,
+                                name: descricao || 'Produto Desconhecido',
+                                valor: 0,
+                                ean: item.ean
+                            };
+                        }
+                        produtosComValor[productId].count++;
+                        produtosComValor[productId].valor += valorItem;
+                    }
+                }
+            } catch (error) {
+            // Silently continue
+            }
+        }
+        // Ordenar por valor para Pareto
+        const paretoFinanceiro = Object.entries(produtosComValor).map(([id, data])=>({
+                productId: id,
+                productName: data.name,
+                count: data.count,
+                valor: Number(data.valor.toFixed(2)),
+                ean: data.ean
+            })).sort((a, b)=>b.valor - a.valor).slice(0, 20);
+        // Calcular percentual acumulado para Pareto
+        const valorTotalPareto = paretoFinanceiro.reduce((sum, p)=>sum + p.valor, 0);
+        let acumuladoPareto = 0;
+        const paretoComAcumulado = paretoFinanceiro.map((p)=>{
+            acumuladoPareto += p.valor;
+            return {
+                ...p,
+                percentualAcumulado: valorTotalPareto > 0 ? Number((acumuladoPareto / valorTotalPareto * 100).toFixed(1)) : 0
+            };
+        });
+        // Preparar resposta
+        const dashboardData = {
+            kpis: {
+                totalSolicitacoes,
+                totalUsuarios,
+                usuariosAtivos,
+                totalLojas,
+                totalItens,
+                lojasCom50MaisProfissionais,
+                solicitacoesHoje,
+                solicitacoesOntem,
+                mediaItensPorSolicitacao: parseFloat(mediaItensPorSolicitacao),
+                taxaConversao,
+                solicitacoesUltimos7Dias,
+                mudancaSemanal: parseFloat(mudancaSemanal)
+            },
+            // Novas métricas financeiras
+            financeiro: {
+                valorTotalSolicitado: Number(valorTotalSolicitado.toFixed(2)),
+                valorTotalAprovado: Number(valorTotalAprovado.toFixed(2)),
+                valorTotalRejeitado: Number(valorTotalRejeitado.toFixed(2)),
+                valorTotalPendente: Number(valorTotalPendente.toFixed(2)),
+                itensAprovados,
+                itensRejeitados,
+                itensPendentes,
+                taxaAprovacao,
+                taxaRejeicao,
+                mediaValorDiario: Number(mediaValorDiario.toFixed(2)),
+                projecaoSemanal: Number((mediaValorDiario * 7).toFixed(2))
+            },
+            solicitacoesPorStatus: statusCounters,
+            solicitacoesPorLoja,
+            solicitacoesRecentes,
+            chartData,
+            topProdutos,
+            periodComparisonData,
+            insights,
+            rankingPorLoja,
+            rankingPorComprador,
+            rankingPorProduto,
+            // Novos dados para gráficos
+            projecaoFinanceira,
+            itensStatusChartData,
+            paretoFinanceiro: paretoComAcumulado,
+            valorChartData,
+            lastUpdated: new Date().toISOString()
+        };
+        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json(dashboardData, {
+            headers: {
+                'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            }
+        });
+    } catch (error) {
+        console.error('[DASHBOARD] Error fetching dashboard data:', error);
+        console.error('[DASHBOARD] Error message:', error?.message);
+        console.error('[DASHBOARD] Error code:', error?.code);
+        console.error('[DASHBOARD] Error details:', error?.details);
+        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+            error: 'Failed to fetch dashboard data',
+            details: error?.message || 'Unknown error',
+            code: error?.code || 'UNKNOWN'
+        }, {
+            status: 500
+        });
+    }
+}
+}}),
+"[project]/ (server-utils)": ((__turbopack_context__) => {
+
+var { r: __turbopack_require__, f: __turbopack_module_context__, i: __turbopack_import__, s: __turbopack_esm__, v: __turbopack_export_value__, n: __turbopack_export_namespace__, c: __turbopack_cache__, M: __turbopack_modules__, l: __turbopack_load__, j: __turbopack_dynamic__, P: __turbopack_resolve_absolute_path__, U: __turbopack_relative_url__, R: __turbopack_resolve_module_id_path__, b: __turbopack_worker_blob_url__, g: global, __dirname, t: require } = __turbopack_context__;
+{
+}}),
+
+};
+
+//# sourceMappingURL=%5Broot%20of%20the%20server%5D__84ae43._.js.map
