@@ -85,7 +85,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   agua: '#0ea5e9',         // sky-500
   suco: '#65a30d',         // lime-600
   energetico: '#dc2626',   // red-600
-  limpeza: '#2563eb',      // blue-600
+  limpeza: '#4878be',      // primary-500
   higiene: '#0d9488',      // teal-600
   alimentos: '#ea580c',    // orange-600
   massas: '#f59e0b',       // amber-500

@@ -1,196 +1,535 @@
 @import "tailwindcss";
 
+/* ============================================================================
+   🎯 DESIGN SYSTEM — MyInventory
+   Paleta baseada em BaseLayout.md (Design Tokens Profissional)
+   ============================================================================ */
+
 :root {
-  /* Cores principais - MyInventory */
-  /* Paleta Principal: #BF092F, #132440, #16476A, #3B9797 */
-  --primary: #132440;
-  --primary-light: #E0E7EF;
-  --primary-dark: #0D1A2D;
-  --secondary: #16476A;
-  --accent: #BF092F;
+  /* ──────────────────────────────────────────────────────────────────────────
+     CORE COLORS — Primary (Deep Blue - Checklists Palette)
+     ────────────────────────────────────────────────────────────────────────── */
+  --primary-50: #E0E7EF;
+  --primary-100: #C5D4E3;
+  --primary-200: #9AB8D1;
+  --primary-300: #6E9BBF;
+  --primary-400: #3B7FAD;
+  --primary-500: #16476A;
+  --primary-600: #133D5A;
+  --primary-700: #132440;
+  --primary-800: #0F1C32;
+  --primary-900: #0A1424;
 
-  /* Cores de suporte */
-  --tertiary: #3B9797;
-  --neutral: #BFC7C9;
+  /* Aliases semânticos */
+  --primary: var(--primary-500);
+  --primary-light: var(--primary-100);
+  --primary-dark: var(--primary-700);
 
-  /* Estados */
-  --success: #3B9797;
-  --warning: #BF092F;
-  --error: #BF092F;
-  --info: #16476A;
+  /* Teal/Cyan accent (from Checklists) */
+  --accent-teal: #3B9797;
+  --accent-teal-light: #5AB5B5;
+  --accent-teal-dark: #2D7A7A;
 
-  /* Backgrounds */
-  --background: #F5F5F5;
-  --surface: #FFFFFF;
-  --card: #FFFFFF;
+  /* ──────────────────────────────────────────────────────────────────────────
+     SEMANTIC STATE COLORS (Checklists Palette)
+     ────────────────────────────────────────────────────────────────────────── */
+  --success-50: #E8F5F5;
+  --success-100: #D0EBEB;
+  --success-200: #A1D7D7;
+  --success-500: #3B9797;
+  --success-600: #2D7A7A;
+  --success-700: #1F5C5C;
 
-  /* Text */
-  --text-primary: #212121;
-  --text-secondary: #757575;
-  --text-light: #FFFFFF;
+  --error-50: #FCE8EC;
+  --error-100: #F9D1D9;
+  --error-200: #F3A3B3;
+  --error-500: #BF092F;
+  --error-600: #9C0726;
+  --error-700: #79061E;
 
-  /* Borders */
-  --border: #BFC7C9;
-  --divider: #E0E0E0;
+  --warning-50: #fffbeb;
+  --warning-100: #fef3c7;
+  --warning-200: #fde68a;
+  --warning-500: #f59e0b;
+  --warning-600: #d97706;
+  --warning-700: #b45309;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --info-50: #E0E7EF;
+  --info-100: #C5D4E3;
+  --info-200: #9AB8D1;
+  --info-500: #16476A;
+  --info-600: #132440;
+  --info-700: #0F1C32;
 
-  /* Foreground (mantido para compatibilidade) */
-  --foreground: #212121;
+  /* ──────────────────────────────────────────────────────────────────────────
+     NEUTRALS (Gray Scale)
+     ────────────────────────────────────────────────────────────────────────── */
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+  --gray-950: #030712;
+
+  /* ──────────────────────────────────────────────────────────────────────────
+     SEMANTIC SURFACES & TEXT
+     ────────────────────────────────────────────────────────────────────────── */
+  --background: var(--gray-50);
+  --surface: #ffffff;
+  --surface-hover: var(--gray-100);
+  --surface-active: var(--gray-200);
+  --card: #ffffff;
+  --card-hover: var(--gray-50);
+
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-500);
+  --text-tertiary: var(--gray-400);
+  --text-inverse: #ffffff;
+
+  --border: var(--gray-200);
+  --border-strong: var(--gray-300);
+  --divider: var(--gray-200);
+
+  --foreground: var(--gray-900);
+
+  /* ──────────────────────────────────────────────────────────────────────────
+     SIDEBAR (Checklists Palette Gradient)
+     ────────────────────────────────────────────────────────────────────────── */
+  --sidebar-from: #16476A;
+  --sidebar-via: #3B9797;
+  --sidebar-to: #3B9797;
+  --sidebar-text: #ffffff;
+  --sidebar-text-muted: rgba(255, 255, 255, 0.7);
+  --sidebar-hover: rgba(255, 255, 255, 0.15);
+  --sidebar-active-bg: #ffffff;
+  --sidebar-active-text: #16476A;
+  --sidebar-border: rgba(255, 255, 255, 0.2);
+  --sidebar-width: 280px;
+  --sidebar-collapsed-width: 76px;
+
+  /* ──────────────────────────────────────────────────────────────────────────
+     NAVBAR
+     ────────────────────────────────────────────────────────────────────────── */
+  --navbar-height: 64px;
+  --navbar-bg: var(--surface);
+  --navbar-border: var(--border);
+
+  /* ──────────────────────────────────────────────────────────────────────────
+     SHADOWS
+     ────────────────────────────────────────────────────────────────────────── */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.06);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.06);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.2);
+
+  /* ──────────────────────────────────────────────────────────────────────────
+     SPACING SCALE (Base 4px)
+     ────────────────────────────────────────────────────────────────────────── */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* ──────────────────────────────────────────────────────────────────────────
+     BORDER RADIUS
+     ────────────────────────────────────────────────────────────────────────── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  /* ──────────────────────────────────────────────────────────────────────────
+     TYPOGRAPHY SCALE
+     ────────────────────────────────────────────────────────────────────────── */
+  --text-xs: 0.75rem;   /* 12px */
+  --text-sm: 0.875rem;  /* 14px */
+  --text-base: 1rem;    /* 16px */
+  --text-lg: 1.125rem;  /* 18px */
+  --text-xl: 1.25rem;   /* 20px */
+  --text-2xl: 1.5rem;   /* 24px */
+  --text-3xl: 2rem;     /* 32px */
+  --text-4xl: 2.5rem;   /* 40px */
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  --font-regular: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* ──────────────────────────────────────────────────────────────────────────
+     MOTION / TRANSITIONS
+     ────────────────────────────────────────────────────────────────────────── */
+  --duration-fast: 100ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --duration-slower: 500ms;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ──────────────────────────────────────────────────────────────────────────
+     Z-INDEX SCALE
+     ────────────────────────────────────────────────────────────────────────── */
+  --z-base: 0;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-fixed: 30;
+  --z-overlay: 40;
+  --z-sidebar: 50;
+  --z-modal: 60;
+  --z-popover: 70;
+  --z-toast: 100;
+  --z-tooltip: 110;
 }
 
+/* ============================================================================
+   🌗 DARK MODE
+   ============================================================================ */
+html[data-theme='dark'] {
+  --background: #0f1117;
+  --surface: #1a1d27;
+  --surface-hover: #222633;
+  --surface-active: #2a2e3d;
+  --card: #1e2130;
+  --card-hover: #252839;
+
+  --text-primary: #f1f3f5;
+  --text-secondary: #9ca3af;
+  --text-tertiary: #6b7280;
+
+  --border: #2d3348;
+  --border-strong: #3d4460;
+  --divider: #2d3348;
+
+  --foreground: #f1f3f5;
+
+  --navbar-bg: var(--surface);
+  --navbar-border: var(--border);
+
+  --sidebar-from: #0c1222;
+  --sidebar-via: #111936;
+  --sidebar-to: #07091a;
+
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme='system'] {
+    --background: #0f1117;
+    --surface: #1a1d27;
+    --surface-hover: #222633;
+    --surface-active: #2a2e3d;
+    --card: #1e2130;
+    --card-hover: #252839;
+
+    --text-primary: #f1f3f5;
+    --text-secondary: #9ca3af;
+    --text-tertiary: #6b7280;
+
+    --border: #2d3348;
+    --border-strong: #3d4460;
+    --divider: #2d3348;
+
+    --foreground: #f1f3f5;
+
+    --navbar-bg: var(--surface);
+    --navbar-border: var(--border);
+
+    --sidebar-from: #0c1222;
+    --sidebar-via: #111936;
+    --sidebar-to: #07091a;
+
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.3);
+  }
+}
+
+/* ============================================================================
+   TAILWIND v4 — @theme inline (Custom Utility Classes)
+   ============================================================================ */
 @theme inline {
-  /* Cores personalizadas do MyInventory */
+  /* Primary palette */
+  --color-primary-50: var(--primary-50);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+  --color-primary-300: var(--primary-300);
+  --color-primary-400: var(--primary-400);
+  --color-primary-500: var(--primary-500);
+  --color-primary-600: var(--primary-600);
+  --color-primary-700: var(--primary-700);
+  --color-primary-800: var(--primary-800);
+  --color-primary-900: var(--primary-900);
   --color-primary: var(--primary);
   --color-primary-light: var(--primary-light);
   --color-primary-dark: var(--primary-dark);
-  --color-secondary: var(--secondary);
-  --color-accent: var(--accent);
-  --color-tertiary: var(--tertiary);
-  --color-neutral: var(--neutral);
 
-  /* Estados */
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-error: var(--error);
-  --color-info: var(--info);
+  /* State colors */
+  --color-success-50: var(--success-50);
+  --color-success-100: var(--success-100);
+  --color-success-500: var(--success-500);
+  --color-success-600: var(--success-600);
+  --color-success-700: var(--success-700);
+  --color-success: var(--success-500);
 
-  /* Backgrounds */
+  --color-error-50: var(--error-50);
+  --color-error-100: var(--error-100);
+  --color-error-500: var(--error-500);
+  --color-error-600: var(--error-600);
+  --color-error-700: var(--error-700);
+  --color-error: var(--error-500);
+
+  --color-warning-50: var(--warning-50);
+  --color-warning-100: var(--warning-100);
+  --color-warning-500: var(--warning-500);
+  --color-warning-600: var(--warning-600);
+  --color-warning-700: var(--warning-700);
+  --color-warning: var(--warning-500);
+
+  --color-info-50: var(--info-50);
+  --color-info-100: var(--info-100);
+  --color-info-500: var(--info-500);
+  --color-info-600: var(--info-600);
+  --color-info-700: var(--info-700);
+  --color-info: var(--info-500);
+
+  /* Accent Teal (from Checklists) */
+  --color-teal: var(--accent-teal);
+  --color-teal-light: var(--accent-teal-light);
+  --color-teal-dark: var(--accent-teal-dark);
+
+  /* Neutrals */
+  --color-gray-50: var(--gray-50);
+  --color-gray-100: var(--gray-100);
+  --color-gray-200: var(--gray-200);
+  --color-gray-300: var(--gray-300);
+  --color-gray-400: var(--gray-400);
+  --color-gray-500: var(--gray-500);
+  --color-gray-600: var(--gray-600);
+  --color-gray-700: var(--gray-700);
+  --color-gray-800: var(--gray-800);
+  --color-gray-900: var(--gray-900);
+  --color-gray-950: var(--gray-950);
+
+  /* Surfaces */
   --color-background: var(--background);
   --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
   --color-card: var(--card);
+  --color-card-hover: var(--card-hover);
 
   /* Text */
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
-  --color-text-light: var(--text-light);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-inverse: var(--text-inverse);
 
   /* Borders */
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-divider: var(--divider);
-
-  /* Shadows */
-  --shadow-sm: var(--shadow-sm);
-  --shadow-md: var(--shadow-md);
-  --shadow-lg: var(--shadow-lg);
-  --shadow-xl: var(--shadow-xl);
 
   /* Foreground */
   --color-foreground: var(--foreground);
 
+  /* Shadows */
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
+
   /* Fonts */
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-roboto-mono), ui-monospace, monospace;
 }
 
+/* ============================================================================
+   BASE STYLES
+   ============================================================================ */
 body {
   background: var(--background);
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--font-inter), system-ui, -apple-system, 'Segoe UI', 'Roboto',
+    'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  line-height: var(--leading-normal);
 }
 
-/* Tema escuro baseado no atributo data-theme */
-html[data-theme='dark'] {
-  --background: #121212;
-  --surface: #1D1F24;
-  --card: #1A1C20;
-  --text-primary: #EAEAEA;
-  --text-secondary: #BDBDBD;
-  --divider: #2A2A2A;
-  --border: #2A2A2A;
+/* ============================================================================
+   FOCUS RING — Accessibility (WCAG AA)
+   ============================================================================ */
+*:focus-visible {
+  outline: 2px solid var(--primary-500);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
-/* Tema do sistema: aplica dark quando preferência do SO for escura */
-@media (prefers-color-scheme: dark) {
-  html[data-theme='system'] {
-    --background: #121212;
-    --surface: #1D1F24;
-    --card: #1A1C20;
-    --text-primary: #EAEAEA;
-    --text-secondary: #BDBDBD;
-    --divider: #2A2A2A;
-    --border: #2A2A2A;
-  }
+/* Remove outline for mouse clicks */
+*:focus:not(:focus-visible) {
+  outline: none;
 }
 
-/* Scrollbar customizada */
+/* ============================================================================
+   SCROLLBAR
+   ============================================================================ */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--surface);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--neutral);
-  border-radius: 4px;
+  background: var(--gray-300);
+  border-radius: var(--radius-full);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--tertiary);
+  background: var(--gray-400);
 }
 
-/* Animações suaves */
-* {
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+html[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: var(--gray-600);
 }
 
+html[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-500);
+}
+
+/* ============================================================================
+   TRANSITIONS — Motion System
+   ============================================================================ */
 button,
-a {
-  transition: all 0.2s ease;
+a,
+input,
+select,
+textarea {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: var(--duration-normal);
+  transition-timing-function: var(--ease-default);
 }
 
-/* Overrides utilitários comuns para suportar tema escuro */
+/* ============================================================================
+   DARK MODE OVERRIDES — Tailwind class compatibility
+   ============================================================================ */
 html[data-theme='dark'] .bg-white { background-color: var(--surface) !important; }
-html[data-theme='dark'] .bg-\[\#F5F5F5\] { background-color: var(--background) !important; }
-html[data-theme='dark'] .text-\[\#212121\] { color: var(--text-primary) !important; }
-html[data-theme='dark'] .text-\[\#757575\] { color: var(--text-secondary) !important; }
-html[data-theme='dark'] .border-\[\#E0E0E0\] { border-color: var(--divider) !important; }
+html[data-theme='dark'] .bg-gray-50 { background-color: var(--background) !important; }
+html[data-theme='dark'] .text-gray-900 { color: var(--text-primary) !important; }
+html[data-theme='dark'] .text-gray-500 { color: var(--text-secondary) !important; }
+html[data-theme='dark'] .border-gray-200 { border-color: var(--border) !important; }
 
-/* Toggle Switch Styles */
+/* ============================================================================
+   TOGGLE SWITCH
+   ============================================================================ */
 .toggle-checkbox {
-  transition: all 0.2s ease;
+  transition: all var(--duration-normal) var(--ease-default);
 }
+
 .toggle-checkbox:checked {
   transform: translateX(100%);
-  border-color: var(--primary);
+  border-color: var(--primary-500);
 }
+
 .toggle-checkbox:checked + .toggle-label {
-  background-color: var(--primary);
+  background-color: var(--primary-500);
 }
+
 html[data-theme='dark'] .toggle-checkbox:not(:checked) {
-  background-color: #4A4A4A;
+  background-color: var(--gray-600);
 }
+
 html[data-theme='dark'] .toggle-label {
-  background-color: #333;
+  background-color: var(--gray-700);
 }
 
-/* Largura maior para conteineres com max-w-7xl (ajuste global) */
-.max-w-7xl {
-  max-width: 116rem !important; /* ~1856px, ainda mais espaço em telas grandes */
+/* ============================================================================
+   LAYOUT SYSTEM — CSS Grid
+   ============================================================================ */
+.app-layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-rows: var(--navbar-height) 1fr;
+  grid-template-areas:
+    "sidebar navbar"
+    "sidebar main";
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
-/* Aplicar mesma largura estendida para max-w-6xl/max-w-5xl em telas grandes */
+.app-layout--collapsed {
+  grid-template-columns: var(--sidebar-collapsed-width) 1fr;
+}
+
+.app-layout--mobile {
+  grid-template-columns: 1fr;
+  grid-template-rows: var(--navbar-height) 1fr;
+  grid-template-areas:
+    "navbar"
+    "main";
+}
+
+.app-sidebar {
+  grid-area: sidebar;
+}
+
+.app-navbar {
+  grid-area: navbar;
+}
+
+.app-main {
+  grid-area: main;
+  overflow-y: auto;
+}
+
+/* ============================================================================
+   CONTAINER — Max widths for content
+   ============================================================================ */
+.max-w-7xl,
 .max-w-6xl,
 .max-w-5xl {
   max-width: 116rem !important;
 }
 
-/* Animações customizadas para perfil */
+/* ============================================================================
+   ANIMATIONS — Keyframes
+   ============================================================================ */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -198,24 +537,15 @@ html[data-theme='dark'] .toggle-label {
   }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
-}
-
-/* Animações para modais e overlays */
 @keyframes fadeInOverlay {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(20px) scale(0.95);
+    transform: translateY(16px) scale(0.97);
   }
   to {
     opacity: 1;
@@ -223,15 +553,61 @@ html[data-theme='dark'] .toggle-label {
   }
 }
 
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulseSoft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--duration-slow) var(--ease-spring);
+}
+
 .animate-fadeIn {
-  animation: fadeInOverlay 0.2s ease-out;
+  animation: fadeInOverlay var(--duration-normal) var(--ease-out);
 }
 
 .animate-slideUp {
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideUp var(--duration-slow) var(--ease-spring);
 }
 
-/* Utilitários de background para gradientes animados */
+.animate-slideInRight {
+  animation: slideInRight var(--duration-slow) var(--ease-spring);
+}
+
+.animate-pulse-soft {
+  animation: pulseSoft 2s var(--ease-default) infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, var(--gray-200) 25%, var(--gray-100) 50%, var(--gray-200) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+html[data-theme='dark'] .animate-shimmer {
+  background: linear-gradient(90deg, var(--gray-800) 25%, var(--gray-700) 50%, var(--gray-800) 75%);
+  background-size: 200% 100%;
+}
+
+/* ============================================================================
+   GRADIENT UTILITIES
+   ============================================================================ */
 .bg-size-200 {
   background-size: 200% auto;
 }

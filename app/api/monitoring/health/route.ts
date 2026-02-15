@@ -8,6 +8,8 @@ export async function GET() {
   const results: any[] = [];
   const startTime = Date.now();
 
+  const now = new Date().toISOString();
+
   // 1. Verificar Database (Supabase)
   const dbStart = Date.now();
   try {
@@ -18,6 +20,7 @@ export async function GET() {
       status: error ? 'unhealthy' : 'healthy',
       response_time_ms: Date.now() - dbStart,
       error_message: error?.message,
+      checked_at: now,
     });
   } catch (err: any) {
     results.push({
@@ -26,6 +29,7 @@ export async function GET() {
       status: 'unhealthy',
       response_time_ms: Date.now() - dbStart,
       error_message: err.message,
+      checked_at: now,
     });
   }
 
@@ -39,6 +43,7 @@ export async function GET() {
       status: error ? 'degraded' : 'healthy',
       response_time_ms: Date.now() - authStart,
       error_message: error?.message,
+      checked_at: now,
     });
   } catch (err: any) {
     results.push({
@@ -47,6 +52,7 @@ export async function GET() {
       status: 'unhealthy',
       response_time_ms: Date.now() - authStart,
       error_message: err.message,
+      checked_at: now,
     });
   }
 
@@ -59,6 +65,7 @@ export async function GET() {
 
   for (const api of apiChecks) {
     const apiStart = Date.now();
+    const apiNow = new Date().toISOString();
     try {
       const { error } = await api.query();
       results.push({
@@ -67,6 +74,7 @@ export async function GET() {
         status: error ? 'unhealthy' : 'healthy',
         response_time_ms: Date.now() - apiStart,
         error_message: error?.message,
+        checked_at: apiNow,
       });
     } catch (err: any) {
       results.push({
@@ -75,6 +83,7 @@ export async function GET() {
         status: 'unhealthy',
         response_time_ms: Date.now() - apiStart,
         error_message: err.message,
+        checked_at: apiNow,
       });
     }
   }

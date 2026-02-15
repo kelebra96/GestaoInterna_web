@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Trophy, Store, User, Package, TrendingUp, Crown, Medal, Award } from 'lucide-react';
+import { Trophy, Store, User, Package, TrendingUp, Crown, Medal, Award, ChevronRight } from 'lucide-react';
 
 interface RankingItem {
   id: string;
@@ -20,49 +20,48 @@ interface RankingPanelProps {
 
 type TabType = 'loja' | 'comprador' | 'produto';
 
-// Cores da paleta do projeto
-const colors = {
-  primary: '#1F53A2',
-  primaryLight: '#E3EFFF',
-  primaryDark: '#153D7A',
-  secondary: '#5C94CC',
-  accent: '#E82129',
-  tertiary: '#647CAC',
-  neutral: '#BFC7C9',
-  success: '#4CAF50',
-  warning: '#FF9800',
-  background: '#F5F5F5',
-  surface: '#FFFFFF',
-  textPrimary: '#212121',
-  textSecondary: '#757575',
-  border: '#BFC7C9',
-  divider: '#E0E0E0',
+const DS = {
+  primary: '#16476A',
+  primaryDark: '#132440',
+  primaryMid: '#3B9797',
+  secondary: '#5AB5B5',
+  warning: '#BF092F',
+  neutral400: '#E0E0E0',
+  neutral500: '#757575',
 };
 
-// Configuração de medalhas com cores do projeto
 const medalConfig = {
-  gold: {
-    bg: { background: 'linear-gradient(to bottom right, #FFD700, #FFA500)' },
-    border: { borderColor: '#FFD700' },
-    light: { backgroundColor: '#FFFDE7' },
-    bar: { background: 'linear-gradient(to right, #FFD700, #FFA500)' },
+  0: {
+    bg: 'linear-gradient(135deg, #FFD700, #FFA500)',
+    border: '#FFD700',
+    lightBg: 'bg-amber-50',
+    lightBorder: 'border-amber-200',
+    barBg: 'linear-gradient(90deg, #FFD700, #FFA500)',
     icon: Crown,
+    label: '🥇',
+    ring: 'ring-amber-200',
   },
-  silver: {
-    bg: { background: `linear-gradient(to bottom right, ${colors.neutral}, ${colors.tertiary})` },
-    border: { borderColor: colors.neutral },
-    light: { backgroundColor: '#F5F5F5' },
-    bar: { background: `linear-gradient(to right, ${colors.neutral}, ${colors.tertiary})` },
+  1: {
+    bg: `linear-gradient(135deg, #94a3b8, #64748b)`,
+    border: '#94a3b8',
+    lightBg: 'bg-slate-50',
+    lightBorder: 'border-slate-200',
+    barBg: `linear-gradient(90deg, #94a3b8, #64748b)`,
     icon: Medal,
+    label: '🥈',
+    ring: 'ring-slate-200',
   },
-  bronze: {
-    bg: { background: `linear-gradient(to bottom right, ${colors.warning}, #E65100)` },
-    border: { borderColor: colors.warning },
-    light: { backgroundColor: '#FFF3E0' },
-    bar: { background: `linear-gradient(to right, ${colors.warning}, #F57C00)` },
+  2: {
+    bg: `linear-gradient(135deg, #f59e0b, #d97706)`,
+    border: '#f59e0b',
+    lightBg: 'bg-orange-50',
+    lightBorder: 'border-orange-200',
+    barBg: `linear-gradient(90deg, #f59e0b, #d97706)`,
     icon: Award,
+    label: '🥉',
+    ring: 'ring-orange-200',
   },
-};
+} as const;
 
 export default function RankingPanel({
   rankingPorLoja,
@@ -82,40 +81,34 @@ export default function RankingPanel({
   const topItems = activeData.slice(0, limit);
   const maxCount = topItems.length > 0 ? topItems[0].count : 1;
 
-  const getMedalStyle = (index: number) => {
-    if (index === 0) return medalConfig.gold;
-    if (index === 1) return medalConfig.silver;
-    if (index === 2) return medalConfig.bronze;
-    return null;
-  };
-
   return (
-    <div style={{ backgroundColor: colors.surface, borderRadius: '16px', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', border: `1px solid ${colors.divider}`, overflow: 'hidden' }}>
+    <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
       {/* Header */}
-      <div style={{ background: `linear-gradient(to right, ${colors.primary}, ${colors.primaryDark}, ${colors.secondary})`, padding: '20px 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '12px' }}>
-              <Trophy style={{ width: '24px', height: '24px', color: '#FFD700' }} />
+      <div
+        className="relative px-6 py-5 overflow-hidden"
+        style={{ background: `linear-gradient(135deg, ${DS.primary}, ${DS.primaryDark})` }}
+      >
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2220%22%20height%3D%2220%22%20viewBox%3D%220%200%2020%2020%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2210%22%20r%3D%221%22%20fill%3D%22white%22%20fill-opacity%3D%220.06%22%2F%3E%3C%2Fsvg%3E')] opacity-100"></div>
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-white/10 backdrop-blur-sm rounded-xl border border-white/10">
+              <Trophy className="w-6 h-6 text-amber-300" />
             </div>
             <div>
-              <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#FFFFFF', margin: 0 }}>Ranking Top {limit}</h3>
-              <p style={{ color: colors.primaryLight, fontSize: '14px', margin: '4px 0 0 0' }}>Análise de frequência de solicitações</p>
+              <h3 className="text-xl font-bold text-white">Rankings Top {limit}</h3>
+              <p className="text-white/50 text-sm mt-0.5">Frequência de solicitações por categoria</p>
             </div>
           </div>
-          <div className="hidden sm:flex" style={{ alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '12px' }}>
-            <div style={{ display: 'flex' }}>
-              <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#FFD700', border: `2px solid ${colors.primaryDark}`, marginRight: '-4px', zIndex: 3 }}></div>
-              <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: colors.neutral, border: `2px solid ${colors.primaryDark}`, marginRight: '-4px', zIndex: 2 }}></div>
-              <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: colors.warning, border: `2px solid ${colors.primaryDark}`, zIndex: 1 }}></div>
-            </div>
-            <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '14px', fontWeight: '500', marginLeft: '4px' }}>Top 3</span>
+          <div className="hidden sm:flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-full bg-amber-400 border-2 border-white/30 -mr-1.5 z-[3]"></div>
+            <div className="w-5 h-5 rounded-full bg-slate-300 border-2 border-white/30 -mr-1.5 z-[2]"></div>
+            <div className="w-5 h-5 rounded-full bg-orange-400 border-2 border-white/30 z-[1]"></div>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', backgroundColor: colors.background, borderBottom: `1px solid ${colors.divider}` }}>
+      <div className="flex border-b border-divider bg-surface-hover/50">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -123,35 +116,17 @@ export default function RankingPanel({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              style={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                padding: '16px',
-                fontWeight: '500',
-                transition: 'all 0.2s',
-                position: 'relative',
-                backgroundColor: isActive ? colors.surface : 'transparent',
-                color: isActive ? colors.primary : colors.textSecondary,
-                border: 'none',
-                cursor: 'pointer',
-              }}
+              className={`flex-1 relative flex items-center justify-center gap-2 py-3.5 text-sm font-medium transition-all duration-200 border-b-2 ${
+                isActive
+                  ? 'text-primary-600 border-primary-500 bg-card'
+                  : 'text-text-tertiary border-transparent hover:text-text-secondary hover:border-gray-200'
+              }`}
             >
-              {isActive && (
-                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '2px', backgroundColor: colors.primary }}></div>
-              )}
-              <Icon style={{ width: '18px', height: '18px' }} />
+              <Icon className="w-4 h-4" />
               <span className="hidden sm:inline">{tab.label}</span>
-              <span style={{
-                padding: '2px 8px',
-                borderRadius: '9999px',
-                fontSize: '12px',
-                fontWeight: 'bold',
-                backgroundColor: isActive ? colors.primaryLight : colors.divider,
-                color: isActive ? colors.primary : colors.textSecondary,
-              }}>
+              <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-bold ${
+                isActive ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-text-tertiary'
+              }`}>
                 {tab.data.length}
               </span>
             </button>
@@ -160,69 +135,64 @@ export default function RankingPanel({
       </div>
 
       {/* Content */}
-      <div style={{ padding: '24px' }}>
+      <div className="p-6">
         {topItems.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '64px 0' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '80px', height: '80px', borderRadius: '50%', backgroundColor: colors.background, marginBottom: '16px' }}>
-              <Trophy style={{ width: '40px', height: '40px', color: colors.neutral }} />
-            </div>
-            <p style={{ fontSize: '18px', fontWeight: '600', color: colors.textPrimary }}>Nenhum dado disponível</p>
-            <p style={{ fontSize: '14px', color: colors.textSecondary, marginTop: '4px' }}>Ainda não há solicitações registradas</p>
+          <div className="text-center py-16">
+            <Trophy className="w-12 h-12 mx-auto text-gray-200 mb-3" />
+            <p className="text-lg font-semibold text-text-primary">Nenhum dado disponível</p>
+            <p className="text-sm text-text-tertiary mt-1">Ainda não há solicitações registradas</p>
           </div>
         ) : (
           <>
-            {/* Podium - Top 3 */}
-            <div style={{ gap: '16px', marginBottom: '32px' }} className="grid grid-cols-1 md:grid-cols-3">
+            {/* Podium — Top 3 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               {topItems.slice(0, 3).map((item, index) => {
-                const medal = getMedalStyle(index);
-                if (!medal) return null;
+                const medal = medalConfig[index as 0 | 1 | 2];
                 const percentage = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
                 const MedalIcon = medal.icon;
 
                 return (
                   <div
                     key={item.id}
-                    style={{
-                      position: 'relative',
-                      padding: '20px',
-                      borderRadius: '16px',
-                      border: '2px solid',
-                      ...medal.border,
-                      ...medal.light,
-                      transition: 'all 0.3s',
-                    }}
-                    className="hover:shadow-lg hover:-translate-y-1"
+                    className={`relative p-5 rounded-2xl border-2 ${medal.lightBg} ${medal.lightBorder} transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group/card`}
                   >
-                    {/* Ribbon */}
-                    <div style={{ position: 'absolute', top: '-12px', right: '-12px' }}>
-                      <div style={{ ...medal.bg, padding: '8px', borderRadius: '50%', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}>
-                        <MedalIcon style={{ width: '16px', height: '16px', color: '#FFFFFF' }} />
+                    {/* Medal badge */}
+                    <div className="absolute -top-3 -right-3 z-10">
+                      <div
+                        className="p-2 rounded-full shadow-lg ring-4 ring-white"
+                        style={{ background: medal.bg }}
+                      >
+                        <MedalIcon className="w-4 h-4 text-white" />
                       </div>
                     </div>
 
                     {/* Position & Count */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <div style={{ ...medal.bg, color: '#FFFFFF', width: '48px', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '20px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+                    <div className="flex items-start justify-between mb-4">
+                      <div
+                        className="text-white w-11 h-11 rounded-xl flex items-center justify-center font-extrabold text-lg shadow-md"
+                        style={{ background: medal.bg }}
+                      >
                         {index + 1}
                       </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '30px', fontWeight: 'bold', color: colors.textPrimary }}>{item.count}</div>
-                        <div style={{ fontSize: '12px', color: colors.textSecondary, fontWeight: '500' }}>solicitações</div>
+                      <div className="text-right">
+                        <div className="text-3xl font-extrabold text-text-primary tabular-nums">{item.count}</div>
+                        <div className="text-[11px] text-text-tertiary font-medium">solicitações</div>
                       </div>
                     </div>
 
                     {/* Name */}
-                    <h4 style={{ fontWeight: '600', color: colors.textPrimary, fontSize: '14px', marginBottom: '4px', minHeight: '40px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    <h4 className="font-semibold text-text-primary text-sm min-h-[40px] line-clamp-2 leading-snug">
                       {item.name}
                     </h4>
                     {item.details && (
-                      <p style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.details}</p>
+                      <p className="text-xs text-text-tertiary mt-1 truncate">{item.details}</p>
                     )}
 
-                    {/* Progress Bar */}
-                    <div style={{ width: '100%', backgroundColor: colors.divider, borderRadius: '9999px', height: '8px', overflow: 'hidden' }}>
+                    {/* Progress */}
+                    <div className="mt-3 w-full bg-white/70 rounded-full h-2 overflow-hidden">
                       <div
-                        style={{ height: '100%', borderRadius: '9999px', transition: 'all 0.7s', width: `${percentage}%`, ...medal.bar }}
+                        className="h-full rounded-full transition-all duration-700 ease-out group-hover/card:w-full"
+                        style={{ width: `${percentage}%`, background: medal.barBg }}
                       />
                     </div>
                   </div>
@@ -230,18 +200,18 @@ export default function RankingPanel({
               })}
             </div>
 
-            {/* Full List */}
+            {/* Full Ranking List */}
             {topItems.length > 3 && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', paddingBottom: '12px', borderBottom: `1px solid ${colors.divider}` }}>
-                  <TrendingUp style={{ width: '18px', height: '18px', color: colors.primary }} />
-                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-divider">
+                  <TrendingUp className="w-4 h-4 text-primary-500" />
+                  <h4 className="text-xs font-bold text-text-tertiary uppercase tracking-widest">
                     Ranking Completo
                   </h4>
-                  <span style={{ fontSize: '12px', color: colors.neutral }}>({topItems.length} itens)</span>
+                  <span className="text-[11px] text-text-tertiary ml-auto">{topItems.length} itens</span>
                 </div>
 
-                <div style={{ maxHeight: '500px', overflowY: 'auto', paddingRight: '4px' }}>
+                <div className="max-h-[460px] overflow-y-auto pr-1 space-y-1.5 scrollbar-thin">
                   {topItems.slice(3).map((item, idx) => {
                     const index = idx + 3;
                     const percentage = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
@@ -249,47 +219,33 @@ export default function RankingPanel({
                     return (
                       <div
                         key={item.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '16px',
-                          padding: '12px',
-                          borderRadius: '12px',
-                          backgroundColor: colors.background,
-                          marginBottom: '8px',
-                          transition: 'background-color 0.15s',
-                        }}
-                        className="hover:bg-slate-100"
+                        className="flex items-center gap-3 p-3 rounded-xl bg-surface-hover hover:bg-gray-100 transition-colors duration-150 group/row"
                       >
                         {/* Position */}
-                        <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: colors.divider, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '14px', color: colors.textSecondary, flexShrink: 0 }}>
+                        <div className="w-8 h-8 rounded-lg bg-gray-200/70 flex items-center justify-center font-bold text-xs text-text-secondary flex-shrink-0">
                           {index + 1}
                         </div>
 
-                        {/* Name & Details */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ fontWeight: '500', color: colors.textPrimary, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</p>
-                          {item.details && (
-                            <p style={{ fontSize: '12px', color: colors.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.details}</p>
-                          )}
+                        {/* Name */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-text-primary text-sm truncate">{item.name}</p>
+                          {item.details && <p className="text-xs text-text-tertiary truncate">{item.details}</p>}
                         </div>
 
-                        {/* Progress Bar - Hidden on mobile */}
-                        <div className="hidden lg:flex" style={{ alignItems: 'center', gap: '8px', width: '144px' }}>
-                          <div style={{ flex: 1, backgroundColor: colors.divider, borderRadius: '9999px', height: '6px', overflow: 'hidden' }}>
+                        {/* Progress — Hidden on mobile */}
+                        <div className="hidden lg:flex items-center gap-2 w-32">
+                          <div className="flex-1 bg-gray-200/70 rounded-full h-1 overflow-hidden">
                             <div
-                              style={{ height: '100%', backgroundColor: colors.secondary, borderRadius: '9999px', transition: 'all 0.5s', width: `${percentage}%` }}
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{ width: `${percentage}%`, backgroundColor: DS.secondary }}
                             />
                           </div>
-                          <span style={{ fontSize: '12px', color: colors.neutral, width: '32px', textAlign: 'right' }}>
-                            {Math.round(percentage)}%
-                          </span>
                         </div>
 
                         {/* Count */}
-                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <div style={{ fontSize: '18px', fontWeight: 'bold', color: colors.primary }}>{item.count}</div>
-                          <div style={{ fontSize: '12px', color: colors.neutral }}>itens</div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <span className="text-base font-extrabold text-primary-600 tabular-nums">{item.count}</span>
+                          <ChevronRight className="w-3.5 h-3.5 text-gray-300 opacity-0 group-hover/row:opacity-100 transition-opacity" />
                         </div>
                       </div>
                     );

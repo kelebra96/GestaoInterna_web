@@ -34,6 +34,12 @@ export interface RedisClient {
   dbsize(): Promise<number>;
   flushdb(): Promise<string>;
   scan(cursor: number, options?: { match?: string; count?: number }): Promise<[string, string[]]>;
+  // Sorted Set commands (for metrics)
+  zadd(key: string, score: number, member: string): Promise<number>;
+  zcard(key: string): Promise<number>;
+  zrangebyscore(key: string, min: number | string, max: number | string): Promise<string[]>;
+  zremrangebyrank(key: string, start: number, stop: number): Promise<number>;
+  zremrangebyscore(key: string, min: number | string, max: number | string): Promise<number>;
 }
 
 // Cliente mock para quando Redis não está configurado
@@ -193,6 +199,72 @@ class MockRedisClient implements RedisClient {
     const nextCursor = end >= allKeys.length ? 0 : end;
     return [String(nextCursor), allKeys.slice(start, end)];
   }
+
+  // Sorted Set commands (mock implementation)
+  private sortedSets = new Map<string, Map<string, number>>();
+
+  async zadd(key: string, score: number, member: string): Promise<number> {
+    if (!this.sortedSets.has(key)) {
+      this.sortedSets.set(key, new Map());
+    }
+    const isNew = !this.sortedSets.get(key)!.has(member);
+    this.sortedSets.get(key)!.set(member, score);
+    return isNew ? 1 : 0;
+  }
+
+  async zcard(key: string): Promise<number> {
+    return this.sortedSets.get(key)?.size || 0;
+  }
+
+  async zrangebyscore(key: string, min: number | string, max: number | string): Promise<string[]> {
+    const set = this.sortedSets.get(key);
+    if (!set) return [];
+
+    const minScore = min === '-inf' ? -Infinity : Number(min);
+    const maxScore = max === '+inf' ? Infinity : Number(max);
+
+    const results: Array<{ member: string; score: number }> = [];
+    for (const [member, score] of set.entries()) {
+      if (score >= minScore && score <= maxScore) {
+        results.push({ member, score });
+      }
+    }
+
+    results.sort((a, b) => a.score - b.score);
+    return results.map(r => r.member);
+  }
+
+  async zremrangebyrank(key: string, start: number, stop: number): Promise<number> {
+    const set = this.sortedSets.get(key);
+    if (!set) return 0;
+
+    const sorted = Array.from(set.entries()).sort((a, b) => a[1] - b[1]);
+    const toRemove = sorted.slice(start, stop + 1);
+
+    for (const [member] of toRemove) {
+      set.delete(member);
+    }
+
+    return toRemove.length;
+  }
+
+  async zremrangebyscore(key: string, min: number | string, max: number | string): Promise<number> {
+    const set = this.sortedSets.get(key);
+    if (!set) return 0;
+
+    const minScore = min === '-inf' ? -Infinity : Number(min);
+    const maxScore = max === '+inf' ? Infinity : Number(max);
+
+    let removed = 0;
+    for (const [member, score] of set.entries()) {
+      if (score >= minScore && score <= maxScore) {
+        set.delete(member);
+        removed++;
+      }
+    }
+
+    return removed;
+  }
 }
 
 // Wrapper para Upstash REST API
@@ -332,6 +404,27 @@ class UpstashRedisClient implements RedisClient {
       args.push('COUNT', String(options.count));
     }
     return this.execute(args);
+  }
+
+  // Sorted Set commands
+  async zadd(key: string, score: number, member: string): Promise<number> {
+    return this.execute(['ZADD', key, String(score), member]);
+  }
+
+  async zcard(key: string): Promise<number> {
+    return this.execute(['ZCARD', key]);
+  }
+
+  async zrangebyscore(key: string, min: number | string, max: number | string): Promise<string[]> {
+    return this.execute(['ZRANGEBYSCORE', key, String(min), String(max)]);
+  }
+
+  async zremrangebyrank(key: string, start: number, stop: number): Promise<number> {
+    return this.execute(['ZREMRANGEBYRANK', key, String(start), String(stop)]);
+  }
+
+  async zremrangebyscore(key: string, min: number | string, max: number | string): Promise<number> {
+    return this.execute(['ZREMRANGEBYSCORE', key, String(min), String(max)]);
   }
 }
 

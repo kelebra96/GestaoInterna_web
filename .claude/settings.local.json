@@ -83,7 +83,8 @@
       "Bash(git push:*)",
       "Bash(powershell -Command:*)",
       "Bash(node:*)",
-      "Bash(del \"D:\\\\myinventory\\\\WEB\\\\test-redis.js\")"
+      "Bash(del \"D:\\\\myinventory\\\\WEB\\\\test-redis.js\")",
+      "Bash(npm run dev:turbo:*)"
     ],
     "deny": [],
     "ask": []

@@ -23,8 +23,6 @@ import {
   X,
   CheckSquare,
   LayoutGrid,
-  Maximize,
-  Minimize,
   ClipboardList,
   Activity,
   CalendarClock,
@@ -97,7 +95,6 @@ export default function Sidebar({
   const { user, firebaseUser, signOut } = useAuth();
   const [solBadge, setSolBadge] = useState<number | undefined>();
   const [notifBadge, setNotifBadge] = useState<number | undefined>();
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Fetch badges
   useEffect(() => {
@@ -127,36 +124,6 @@ export default function Sidebar({
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
-  // Fullscreen detection
-  useEffect(() => {
-    const handler = () => {
-      setIsFullscreen(!!(
-        document.fullscreenElement ||
-        (document as any).webkitFullscreenElement
-      ));
-    };
-
-    document.addEventListener('fullscreenchange', handler);
-    document.addEventListener('webkitfullscreenchange', handler);
-    return () => {
-      document.removeEventListener('fullscreenchange', handler);
-      document.removeEventListener('webkitfullscreenchange', handler);
-    };
-  }, []);
-
-  // Toggle fullscreen
-  const toggleFullscreen = async () => {
-    try {
-      if (!isFullscreen) {
-        await document.documentElement.requestFullscreen?.();
-      } else {
-        await document.exitFullscreen?.();
-      }
-    } catch (e) {
-      console.error('Fullscreen error:', e);
-    }
-  };
-
   // Filter menu items by role
   const filteredItems = menuItems.filter(item => {
     if (!item.allowedRoles?.length) return true;
@@ -183,44 +150,56 @@ export default function Sidebar({
       {/* Mobile Overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm lg:hidden"
+          style={{ zIndex: 'var(--z-overlay)' }}
           onClick={onMobileClose}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        style={{ width: collapsed ? '80px' : '288px' }}
-        aria-hidden={isMobile && !mobileOpen}
-        className={`bg-gradient-to-b from-[#16476A] via-[#3B9797] to-[#132440] text-white flex flex-col transition-all duration-300 ease-in-out fixed left-0 top-0 h-screen z-50 shadow-2xl ${
-          isMobile
+        className={`
+          app-sidebar bg-gradient-to-b from-[var(--sidebar-from)] via-[var(--sidebar-via)] to-[var(--sidebar-to)]
+          text-[var(--sidebar-text)] flex flex-col
+          fixed left-0 top-0 h-screen shadow-xl
+          transition-all duration-[var(--duration-slow)] ease-[var(--ease-default)]
+          ${isMobile
             ? (mobileOpen
               ? 'translate-x-0 opacity-100 pointer-events-auto'
               : '-translate-x-full opacity-0 pointer-events-none')
             : 'translate-x-0 opacity-100 pointer-events-auto'
-        }`}
+          }
+        `}
+        style={{
+          width: collapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)',
+          zIndex: 'var(--z-sidebar)',
+        }}
+        aria-hidden={isMobile && !mobileOpen}
       >
         {/* ================================================================ */}
         {/* HEADER */}
         {/* ================================================================ */}
-        <div className="flex-shrink-0 p-5 border-b border-white/20">
+        <div className="flex-shrink-0 p-5 border-b border-[var(--sidebar-border)]">
           <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-4'}`}>
             {/* Logo */}
             <div className="relative flex-shrink-0">
               <img
                 src="/icons/GestaoInternaIcon.png"
                 alt="Logo"
-                style={{ width: collapsed ? '48px' : '56px', height: collapsed ? '48px' : '56px' }}
                 className="rounded-2xl shadow-lg"
+                style={{
+                  width: collapsed ? '44px' : '52px',
+                  height: collapsed ? '44px' : '52px',
+                }}
               />
-              <span style={{ width: '14px', height: '14px' }} className="absolute -bottom-1 -right-1 bg-emerald-400 rounded-full border-2 border-[#16476A]" />
+              <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-success-500 rounded-full border-2 border-[var(--sidebar-from)]" />
             </div>
 
             {/* Brand */}
             {!collapsed && (
               <div className="flex-1 min-w-0">
                 <h1 className="text-xl font-bold tracking-tight">MyInventory</h1>
-                <p className="text-[11px] text-white/60 font-medium uppercase tracking-widest">
+                <p className="text-[11px] text-[var(--sidebar-text-muted)] font-medium uppercase tracking-widest">
                   Gestão Interna
                 </p>
               </div>
@@ -230,7 +209,8 @@ export default function Sidebar({
             {!collapsed && onMobileClose && (
               <button
                 onClick={onMobileClose}
-                className="lg:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
+                className="lg:hidden p-2 hover:bg-[var(--sidebar-hover)] rounded-lg transition-colors"
+                aria-label="Fechar menu"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -247,21 +227,21 @@ export default function Sidebar({
             if (!items.length) return null;
 
             return (
-              <div key={groupKey} className="mb-6">
+              <div key={groupKey} className="mb-5">
                 {/* Group Label */}
                 {!collapsed && (
-                  <h2 className="px-3 mb-2 text-[11px] font-semibold text-white/50 uppercase tracking-wider">
+                  <h2 className="px-3 mb-2 text-[11px] font-semibold text-[var(--sidebar-text-muted)] uppercase tracking-wider">
                     {groupConfig[groupKey].label}
                   </h2>
                 )}
 
                 {/* Collapsed Divider */}
                 {collapsed && groupKey !== 'principal' && (
-                  <div className="mx-2 mb-3 border-t border-white/20" />
+                  <div className="mx-2 mb-3 border-t border-[var(--sidebar-border)]" />
                 )}
 
                 {/* Menu Items */}
-                <ul className="space-y-1">
+                <ul className="space-y-0.5">
                   {items.map(item => {
                     const isActive = pathname === item.href;
                     const Icon = item.icon;
@@ -273,16 +253,24 @@ export default function Sidebar({
                           href={item.href}
                           onClick={onMobileClose}
                           title={collapsed ? item.name : undefined}
-                          className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${collapsed ? 'justify-center' : ''} ${isActive ? 'bg-white text-[#16476A] shadow-lg font-semibold' : 'text-white/80 hover:bg-white/10 hover:text-white'}`}
+                          className={`
+                            group relative flex items-center gap-3 px-3 py-2.5 rounded-xl
+                            transition-all duration-[var(--duration-normal)] ease-[var(--ease-default)]
+                            ${collapsed ? 'justify-center' : ''}
+                            ${isActive
+                              ? 'bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)] shadow-md font-semibold'
+                              : 'text-white/80 hover:bg-[var(--sidebar-hover)] hover:text-white'
+                            }
+                          `}
                         >
                           {/* Active Indicator */}
                           {isActive && !collapsed && (
-                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-7 bg-[#16476A] rounded-r-full -ml-3" />
+                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-500 rounded-r-full -ml-3" />
                           )}
 
                           {/* Icon */}
                           <Icon
-                            className={`flex-shrink-0 transition-transform duration-200 ${collapsed ? 'w-6 h-6' : 'w-5 h-5'} ${!isActive ? 'group-hover:scale-110' : ''}`}
+                            className={`flex-shrink-0 transition-transform duration-[var(--duration-normal)] ${collapsed ? 'w-5.5 h-5.5' : 'w-[18px] h-[18px]'} ${!isActive ? 'group-hover:scale-110' : ''}`}
                             strokeWidth={isActive ? 2.5 : 2}
                           />
 
@@ -291,7 +279,7 @@ export default function Sidebar({
                             <>
                               <span className="flex-1 text-sm truncate">{item.name}</span>
                               {badge && (
-                                <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow">
+                                <span className="bg-error-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
                                   {badge > 99 ? '99+' : badge}
                                 </span>
                               )}
@@ -300,7 +288,7 @@ export default function Sidebar({
 
                           {/* Collapsed Badge */}
                           {collapsed && badge && (
-                            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-[10px] font-bold text-white rounded-full flex items-center justify-center border-2 border-[#16476A]">
+                            <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-error-500 text-[9px] font-bold text-white rounded-full flex items-center justify-center border-2 border-[var(--sidebar-from)]">
                               {badge > 9 ? '9+' : badge}
                             </span>
                           )}
@@ -317,41 +305,40 @@ export default function Sidebar({
         {/* ================================================================ */}
         {/* FOOTER */}
         {/* ================================================================ */}
-        <div className="flex-shrink-0 p-4 border-t border-white/20 bg-black/10">
+        <div className="flex-shrink-0 p-4 border-t border-[var(--sidebar-border)] bg-black/10">
           {/* User Card */}
           {!collapsed ? (
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 mb-4 border border-white/10">
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3.5 mb-3 border border-[var(--sidebar-border)]">
               <div className="flex items-center gap-3 mb-3">
                 <div className="relative flex-shrink-0">
                   {firebaseUser?.photoURL ? (
                     <img
                       src={firebaseUser.photoURL}
                       alt="Avatar"
-                      style={{ width: '40px', height: '40px' }}
-                      className="rounded-full object-cover ring-2 ring-white/30"
+                      className="w-9 h-9 rounded-full object-cover ring-2 ring-white/30"
                     />
                   ) : (
-                    <div style={{ width: '40px', height: '40px' }} className="rounded-full bg-white/20 flex items-center justify-center ring-2 ring-white/30">
-                      <UserCircle style={{ width: '24px', height: '24px' }} />
+                    <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center ring-2 ring-white/30">
+                      <UserCircle className="w-5 h-5" />
                     </div>
                   )}
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-[#16476A]" />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-success-500 rounded-full border-2 border-[var(--sidebar-from)]" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold truncate">{user?.displayName || 'Usuário'}</p>
-                  <p className="text-xs text-white/60 truncate">{user?.email}</p>
+                  <p className="text-xs text-[var(--sidebar-text-muted)] truncate">{user?.email}</p>
                 </div>
               </div>
               <button
                 onClick={() => signOut()}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/10 hover:bg-red-500/80 rounded-lg transition-all duration-200 text-sm font-medium border border-white/10 hover:border-red-400"
+                className="w-full flex items-center justify-center gap-2 py-2 bg-white/10 hover:bg-error-500/80 rounded-lg transition-all duration-[var(--duration-normal)] text-sm font-medium border border-[var(--sidebar-border)] hover:border-error-400"
               >
-                <LogOut style={{ width: '16px', height: '16px' }} />
+                <LogOut className="w-4 h-4" />
                 Sair da Conta
               </button>
             </div>
           ) : (
-            <div className="flex justify-center mb-4">
+            <div className="flex justify-center mb-3">
               <button
                 onClick={() => signOut()}
                 title="Sair da conta"
@@ -361,57 +348,35 @@ export default function Sidebar({
                   <img
                     src={firebaseUser.photoURL}
                     alt="Avatar"
-                    style={{ width: '40px', height: '40px' }}
-                    className="rounded-full object-cover ring-2 ring-white/30 group-hover:ring-red-400 transition-all"
+                    className="w-9 h-9 rounded-full object-cover ring-2 ring-white/30 group-hover:ring-error-400 transition-all"
                   />
                 ) : (
-                  <div style={{ width: '40px', height: '40px' }} className="rounded-full bg-white/20 flex items-center justify-center ring-2 ring-white/30 group-hover:ring-red-400 transition-all">
-                    <UserCircle style={{ width: '24px', height: '24px' }} />
+                  <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center ring-2 ring-white/30 group-hover:ring-error-400 transition-all">
+                    <UserCircle className="w-5 h-5" />
                   </div>
                 )}
-                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 group-hover:bg-red-500 rounded-full border-2 border-[#16476A] transition-colors" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-success-500 group-hover:bg-error-500 rounded-full border-2 border-[var(--sidebar-from)] transition-colors" />
               </button>
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className={`flex ${collapsed ? 'flex-col' : ''} gap-2`}>
-            {/* Fullscreen Button */}
+          {/* Collapse Button */}
+          {onToggle && !isMobile && (
             <button
-              onClick={toggleFullscreen}
-              title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
-              className={`flex items-center justify-center gap-2 py-3 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 hover:border-white/30 transition-all duration-200 group ${collapsed ? 'w-full' : 'flex-1'}`}
+              onClick={onToggle}
+              title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-[var(--sidebar-border)] hover:border-white/30 transition-all duration-[var(--duration-normal)] group"
             >
-              {isFullscreen ? (
-                <Minimize className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              {collapsed ? (
+                <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
               ) : (
-                <Maximize className="w-5 h-5 group-hover:scale-110 transition-transform" />
-              )}
-              {!collapsed && (
-                <span className="text-xs font-semibold">
-                  {isFullscreen ? 'Sair Tela Cheia' : 'Tela Cheia'}
-                </span>
+                <>
+                  <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+                  <span className="text-xs font-semibold">Recolher</span>
+                </>
               )}
             </button>
-
-            {/* Collapse Button */}
-            {onToggle && (
-              <button
-                onClick={onToggle}
-                title={collapsed ? 'Expandir menu' : 'Recolher menu'}
-                className={`flex items-center justify-center gap-2 py-3 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 hover:border-white/30 transition-all duration-200 group ${collapsed ? 'w-full' : 'flex-1'}`}
-              >
-                {collapsed ? (
-                  <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                ) : (
-                  <>
-                    <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-                    <span className="text-xs font-semibold">Recolher</span>
-                  </>
-                )}
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </aside>
     </>

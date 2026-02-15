@@ -1,9 +1,11 @@
 /**
  * Middleware Global - Next.js Edge Middleware
+ * Sprint 4: Enhanced with Observability
  *
  * Funcionalidades:
  * - Rate Limiting por IP
- * - Request ID para tracing
+ * - Request ID para tracing (correlationId)
+ * - Request timing headers
  * - Headers de segurança
  *
  * Nota: Este middleware roda no Edge Runtime, então usa uma versão
@@ -58,11 +60,16 @@ function checkEdgeRateLimit(ip: string, limit = 200, windowSeconds = 60): boolea
 }
 
 export function middleware(request: NextRequest) {
+  const startTime = Date.now();
   const response = NextResponse.next();
 
-  // Gerar Request ID para tracing
+  // Gerar Request ID para tracing (correlationId)
   const requestId = crypto.randomUUID();
   response.headers.set('X-Request-ID', requestId);
+  response.headers.set('X-Correlation-ID', requestId);
+
+  // Timestamp de início para cálculo de latência
+  response.headers.set('X-Request-Start', startTime.toString());
 
   // Obter IP do cliente
   const forwarded = request.headers.get('x-forwarded-for');

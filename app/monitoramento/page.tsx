@@ -135,6 +135,9 @@ export default function MonitoramentoPage() {
   const [manualImagePreviews, setManualImagePreviews] = useState<Record<string, string>>({});
   const [pasteStatus, setPasteStatus] = useState<Record<string, string>>({});
   const lastRealtimeAtRef = useRef<number>(0);
+  const runningHealthCheckRef = useRef<boolean>(false);
+  const [realtimeConnected, setRealtimeConnected] = useState<boolean>(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
 
   const getAccessToken = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
@@ -163,6 +166,7 @@ export default function MonitoramentoPage() {
         const result = await response.json();
         console.log('[Monitoramento] Data received:', result);
         setData(result);
+        setLastUpdateTime(new Date());
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.error('[Monitoramento] Error:', errorData);
@@ -213,33 +217,33 @@ export default function MonitoramentoPage() {
         if (status === 'SUBSCRIBED') {
           console.log('[Realtime] Conectado ao canal de monitoramento!');
           lastRealtimeAtRef.current = Date.now();
-          setError(null); // Limpa erro anterior ao reconectar
+          setRealtimeConnected(true);
+          setError(null);
         }
         if (status === 'CHANNEL_ERROR') {
           const errorMsg = err?.message || err || 'Conexão perdida';
           console.error('[Realtime] Erro no canal:', errorMsg);
-          // Não exibe erro para o usuário se for apenas desconexão temporária
-          // O fallback polling garantirá atualizações
+          setRealtimeConnected(false);
         }
         if (status === 'TIMED_OUT') {
           console.warn('[Realtime] Conexão expirou. Tentando reconectar...');
+          setRealtimeConnected(false);
         }
         if (status === 'CLOSED') {
           console.log('[Realtime] Canal fechado');
+          setRealtimeConnected(false);
         }
       });
 
-    // Fallback: polling leve para garantir atualização caso realtime falhe
-    const fallbackInterval = window.setInterval(() => {
-      const last = lastRealtimeAtRef.current;
-      if (!last || Date.now() - last > 45000) {
-        fetchData();
-      }
-    }, 20000);
+    // Polling para garantir atualização dos gráficos
+    const pollingInterval = window.setInterval(() => {
+      console.log('[Polling] Atualizando dados...');
+      fetchData();
+    }, 10000); // Atualiza a cada 10 segundos
 
     // Limpeza ao desmontar o componente
     return () => {
-      window.clearInterval(fallbackInterval);
+      window.clearInterval(pollingInterval);
       supabase.removeChannel(channel);
     };
   }, [fetchData]);
@@ -459,10 +463,11 @@ export default function MonitoramentoPage() {
   }, [user?.uid, runningTests]);
 
   // Executar health check
-  const runHealthCheck = async () => {
-    if (runningHealthCheck) return;
+  const runHealthCheck = useCallback(async () => {
+    if (runningHealthCheckRef.current) return;
 
     console.log('[Monitoramento] Starting health check...');
+    runningHealthCheckRef.current = true;
     setRunningHealthCheck(true);
 
     try {
@@ -473,12 +478,16 @@ export default function MonitoramentoPage() {
       const result = await response.json();
       console.log('[Monitoramento] Health check result:', result);
 
+      // Atualizar dados após health check completar
+      await fetchData();
+
     } catch (err) {
       console.error('[Monitoramento] Health check exception:', err);
     } finally {
+      runningHealthCheckRef.current = false;
       setRunningHealthCheck(false);
     }
-  };
+  }, [fetchData]);
 
   // AI Analysis Logic
   const runAiAnalysis = async () => {
@@ -734,9 +743,42 @@ export default function MonitoramentoPage() {
 
           {expandedSections.has('charts') && (
             <div className="bg-white rounded-b-2xl border-2 border-t-0 border-[#E0E0E0] p-6">
+              {/* Indicador de atualização */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#3B9797] opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#3B9797]"></span>
+                    </span>
+                    <span className="text-sm text-[#757575]">
+                      Live • {data?.systemHealth?.length || 0} registros
+                    </span>
+                  </div>
+                  {lastUpdateTime && (
+                    <span className="text-xs text-[#757575] bg-[#F8F9FA] px-2 py-1 rounded">
+                      {lastUpdateTime.toLocaleTimeString('pt-BR')}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={runHealthCheck}
+                  disabled={runningHealthCheck}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-[#16476A] text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 ${runningHealthCheck ? 'animate-spin' : ''}`} />
+                  Atualizar Agora
+                </button>
+              </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <HealthStatusChart systemHealth={data?.systemHealth || []} />
-                <ResponseTimeChart systemHealth={data?.systemHealth || []} />
+                <HealthStatusChart
+                  key={`health-${data?.systemHealth?.length || 0}-${lastUpdateTime?.getTime() || 0}`}
+                  systemHealth={data?.systemHealth || []}
+                />
+                <ResponseTimeChart
+                  key={`response-${data?.systemHealth?.length || 0}-${lastUpdateTime?.getTime() || 0}`}
+                  systemHealth={data?.systemHealth || []}
+                />
               </div>
             </div>
           )}
