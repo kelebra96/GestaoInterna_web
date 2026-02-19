@@ -11,7 +11,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
-  TooltipProps,
   Cell
 } from 'recharts';
 
@@ -29,7 +28,7 @@ interface ParetoChartProps {
   successColor?: string;
 }
 
-const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
+const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     const isAbove80 = data.percentualAcumulado > 80;

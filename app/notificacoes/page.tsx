@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   Bell,
   CheckCircle2,
@@ -17,6 +17,7 @@ import {
   MailOpen,
   Filter,
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Tipo = 'info' | 'warning' | 'error' | 'success' | 'item_approved' | 'item_rejected' | 'new_solicitacao';
 
@@ -32,6 +33,7 @@ interface Notificacao {
 }
 
 export default function NotificacoesPage() {
+  const { firebaseUser } = useAuth();
   const [data, setData] = useState<Notificacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,16 +43,26 @@ export default function NotificacoesPage() {
   const [page, setPage] = useState(1);
   const perPage = 10;
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      const token = firebaseUser ? await firebaseUser.getIdToken() : null;
+      const headers: Record<string, string> = {
+        'Cache-Control': 'no-cache',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const res = await fetch('/api/notificacoes', {
         cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
+        headers,
       });
-      if (!res.ok) throw new Error('Falha ao carregar notificações');
+      if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error('Sessão expirada. Faça login novamente.');
+        }
+        throw new Error('Falha ao carregar notificações');
+      }
       const json = await res.json();
       setData(json.notifications || []);
       setError(null);
@@ -60,9 +72,13 @@ export default function NotificacoesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [firebaseUser]);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    if (firebaseUser) {
+      fetchData();
+    }
+  }, [firebaseUser, fetchData]);
 
   const getNotificationTitle = (n: Notificacao): string => {
     if (n.type === 'item_approved') return 'Item Aprovado';
@@ -98,9 +114,14 @@ export default function NotificacoesPage() {
   const markRead = async (id: string, read: boolean) => {
     setSaving(s => ({ ...s, [id]: true }));
     try {
+      const token = firebaseUser ? await firebaseUser.getIdToken() : null;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const res = await fetch(`/api/notificacoes/${encodeURIComponent(id)}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ read }),
       });
       if (!res.ok) throw new Error('Falha ao atualizar notificação');

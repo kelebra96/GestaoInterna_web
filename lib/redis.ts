@@ -19,6 +19,7 @@ export interface RedisClient {
   del(...keys: string[]): Promise<number>;
   keys(pattern: string): Promise<string[]>;
   incr(key: string): Promise<number>;
+  incrBy(key: string, increment: number): Promise<number>;
   expire(key: string, seconds: number): Promise<number>;
   ttl(key: string): Promise<number>;
   exists(...keys: string[]): Promise<number>;
@@ -91,6 +92,14 @@ class MockRedisClient implements RedisClient {
   async incr(key: string): Promise<number> {
     const current = parseInt(await this.get(key) || '0', 10);
     const newValue = current + 1;
+    const item = this.store.get(key);
+    await this.set(key, String(newValue), item?.expireAt ? { ex: Math.floor((item.expireAt - Date.now()) / 1000) } : undefined);
+    return newValue;
+  }
+
+  async incrBy(key: string, increment: number): Promise<number> {
+    const current = parseInt(await this.get(key) || '0', 10);
+    const newValue = current + increment;
     const item = this.store.get(key);
     await this.set(key, String(newValue), item?.expireAt ? { ex: Math.floor((item.expireAt - Date.now()) / 1000) } : undefined);
     return newValue;
@@ -329,6 +338,10 @@ class UpstashRedisClient implements RedisClient {
     return this.execute(['INCR', key]);
   }
 
+  async incrBy(key: string, increment: number): Promise<number> {
+    return this.execute(['INCRBY', key, String(increment)]);
+  }
+
   async expire(key: string, seconds: number): Promise<number> {
     return this.execute(['EXPIRE', key, String(seconds)]);
   }
@@ -428,27 +441,189 @@ class UpstashRedisClient implements RedisClient {
   }
 }
 
+// Wrapper para ioredis (conexão TCP)
+class IORedisClient implements RedisClient {
+  private client: import('ioredis').default;
+
+  constructor(url: string) {
+    // Importação dinâmica para evitar problemas em ambientes serverless
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Redis = require('ioredis');
+    this.client = new Redis(url, {
+      maxRetriesPerRequest: 3,
+      retryDelayOnFailover: 100,
+      enableReadyCheck: true,
+      lazyConnect: false,
+    });
+
+    this.client.on('error', (err: Error) => {
+      console.error('[Redis] Erro de conexão:', err.message);
+    });
+
+    this.client.on('connect', () => {
+      console.log('[Redis] Conectado ao servidor Redis');
+    });
+  }
+
+  async get(key: string): Promise<string | null> {
+    return this.client.get(key);
+  }
+
+  async set(key: string, value: string, options?: { ex?: number }): Promise<string | null> {
+    if (options?.ex) {
+      return this.client.set(key, value, 'EX', options.ex);
+    }
+    return this.client.set(key, value);
+  }
+
+  async setex(key: string, seconds: number, value: string): Promise<string | null> {
+    return this.client.setex(key, seconds, value);
+  }
+
+  async del(...keys: string[]): Promise<number> {
+    if (keys.length === 0) return 0;
+    return this.client.del(...keys);
+  }
+
+  async keys(pattern: string): Promise<string[]> {
+    return this.client.keys(pattern);
+  }
+
+  async incr(key: string): Promise<number> {
+    return this.client.incr(key);
+  }
+
+  async incrBy(key: string, increment: number): Promise<number> {
+    return this.client.incrby(key, increment);
+  }
+
+  async expire(key: string, seconds: number): Promise<number> {
+    return this.client.expire(key, seconds);
+  }
+
+  async ttl(key: string): Promise<number> {
+    return this.client.ttl(key);
+  }
+
+  async exists(...keys: string[]): Promise<number> {
+    if (keys.length === 0) return 0;
+    return this.client.exists(...keys);
+  }
+
+  async hget(key: string, field: string): Promise<string | null> {
+    return this.client.hget(key, field);
+  }
+
+  async hset(key: string, field: string, value: string): Promise<number> {
+    return this.client.hset(key, field, value);
+  }
+
+  async hgetall(key: string): Promise<Record<string, string> | null> {
+    const result = await this.client.hgetall(key);
+    if (!result || Object.keys(result).length === 0) return null;
+    return result;
+  }
+
+  async hdel(key: string, ...fields: string[]): Promise<number> {
+    if (fields.length === 0) return 0;
+    return this.client.hdel(key, ...fields);
+  }
+
+  async sadd(key: string, ...members: string[]): Promise<number> {
+    if (members.length === 0) return 0;
+    return this.client.sadd(key, ...members);
+  }
+
+  async smembers(key: string): Promise<string[]> {
+    return this.client.smembers(key);
+  }
+
+  async srem(key: string, ...members: string[]): Promise<number> {
+    if (members.length === 0) return 0;
+    return this.client.srem(key, ...members);
+  }
+
+  async publish(channel: string, message: string): Promise<number> {
+    return this.client.publish(channel, message);
+  }
+
+  async ping(): Promise<string> {
+    return this.client.ping();
+  }
+
+  async dbsize(): Promise<number> {
+    return this.client.dbsize();
+  }
+
+  async flushdb(): Promise<string> {
+    return this.client.flushdb();
+  }
+
+  async scan(cursor: number, options?: { match?: string; count?: number }): Promise<[string, string[]]> {
+    if (options?.match && options?.count) {
+      return this.client.scan(cursor, 'MATCH', options.match, 'COUNT', options.count) as Promise<[string, string[]]>;
+    } else if (options?.match) {
+      return this.client.scan(cursor, 'MATCH', options.match) as Promise<[string, string[]]>;
+    } else if (options?.count) {
+      return this.client.scan(cursor, 'COUNT', options.count) as Promise<[string, string[]]>;
+    }
+    return this.client.scan(cursor) as Promise<[string, string[]]>;
+  }
+
+  async zadd(key: string, score: number, member: string): Promise<number> {
+    return this.client.zadd(key, score, member);
+  }
+
+  async zcard(key: string): Promise<number> {
+    return this.client.zcard(key);
+  }
+
+  async zrangebyscore(key: string, min: number | string, max: number | string): Promise<string[]> {
+    return this.client.zrangebyscore(key, min, max);
+  }
+
+  async zremrangebyrank(key: string, start: number, stop: number): Promise<number> {
+    return this.client.zremrangebyrank(key, start, stop);
+  }
+
+  async zremrangebyscore(key: string, min: number | string, max: number | string): Promise<number> {
+    return this.client.zremrangebyscore(key, min, max);
+  }
+}
+
 // Singleton do cliente Redis
 let redisClient: RedisClient | null = null;
 
 /**
  * Obtém instância do cliente Redis
- * Usa Upstash se configurado, senão usa mock em memória
+ * Prioridade:
+ * 1. REDIS_URL (ioredis TCP) - Para VPS/servidor próprio
+ * 2. UPSTASH_REDIS_REST_URL (REST API) - Para Vercel/Serverless
+ * 3. Mock em memória - Fallback para desenvolvimento
  */
 export function getRedisClient(): RedisClient {
   if (redisClient) {
     return redisClient;
   }
 
+  const redisUrl = process.env.REDIS_URL;
   const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
   const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-  if (upstashUrl && upstashToken) {
-    console.log('[Redis] Usando Upstash Redis');
+  // Prioridade 1: Redis local/VPS via TCP (ioredis)
+  if (redisUrl) {
+    console.log('[Redis] Usando Redis via TCP (ioredis)');
+    redisClient = new IORedisClient(redisUrl);
+  }
+  // Prioridade 2: Upstash REST API (serverless)
+  else if (upstashUrl && upstashToken) {
+    console.log('[Redis] Usando Upstash Redis (REST API)');
     redisClient = new UpstashRedisClient(upstashUrl, upstashToken);
-  } else {
-    console.warn('[Redis] Variáveis UPSTASH não configuradas, usando mock em memória');
-    console.warn('[Redis] Configure UPSTASH_REDIS_REST_URL e UPSTASH_REDIS_REST_TOKEN para produção');
+  }
+  // Fallback: Mock em memória
+  else {
+    console.warn('[Redis] Nenhuma configuração encontrada, usando mock em memória');
+    console.warn('[Redis] Configure REDIS_URL ou UPSTASH_REDIS_REST_URL para produção');
     redisClient = new MockRedisClient();
   }
 

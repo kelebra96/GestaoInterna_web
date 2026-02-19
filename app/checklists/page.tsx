@@ -20,8 +20,12 @@ import {
   Store,
   AlertTriangle,
   Lightbulb,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { ChecklistExecution, ExecutionStatus } from '@/lib/types/checklist';
+import { useChecklistRealtime } from '@/hooks/useChecklistRealtime';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   BarChart,
   Bar,
@@ -58,11 +62,64 @@ const CHART_COLORS = ['#16476A', '#3B9797', '#BF092F', '#BF092F', '#3B9797', '#1
 
 export default function ChecklistsPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [executions, setExecutions] = useState<ChecklistExecution[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ExecutionStatus | 'all'>('all');
+
+  // Supabase Realtime subscription
+  const {
+    executions: realtimeExecutions,
+    isConnected: realtimeConnected,
+    lastUpdate: realtimeLastUpdate,
+    refresh: realtimeRefresh,
+    stats: realtimeStats,
+  } = useChecklistRealtime({
+    companyId: user?.companyId,
+    enabled: !!user?.companyId,
+  });
+
+  // Merge realtime data with local data
+  useEffect(() => {
+    if (realtimeExecutions.length > 0) {
+      setExecutions((prevExecutions) => {
+        const existingMap = new Map(prevExecutions.map((e) => [e.id, e]));
+
+        realtimeExecutions.forEach((re) => {
+          const existing = existingMap.get(re.id);
+          if (existing) {
+            existingMap.set(re.id, {
+              ...existing,
+              status: re.status as ExecutionStatus,
+              progress: re.progress,
+              completedAt: re.completedAt?.toISOString(),
+            });
+          } else {
+            existingMap.set(re.id, {
+              id: re.id,
+              templateId: re.templateId,
+              templateName: re.templateName,
+              storeId: re.storeId,
+              storeName: re.storeName,
+              userId: re.userId,
+              userName: re.userName,
+              scheduledDate: re.scheduledDate instanceof Date ? re.scheduledDate.toISOString() : re.scheduledDate,
+              status: re.status as ExecutionStatus,
+              progress: re.progress,
+              createdAt: re.createdAt instanceof Date ? re.createdAt.toISOString() : re.createdAt,
+              completedAt: re.completedAt?.toISOString(),
+            } as ChecklistExecution);
+          }
+        });
+
+        return Array.from(existingMap.values()).sort(
+          (a, b) => new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime()
+        );
+      });
+    }
+  }, [realtimeExecutions]);
 
   const fetchExecutions = async () => {
     try {
@@ -306,6 +363,31 @@ export default function ChecklistsPage() {
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Realtime Status Indicator */}
+              <div
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl backdrop-blur-sm border ${
+                  realtimeConnected
+                    ? 'bg-emerald-500/20 border-emerald-400/30 text-emerald-100'
+                    : 'bg-amber-500/20 border-amber-400/30 text-amber-100'
+                }`}
+              >
+                {realtimeConnected ? (
+                  <>
+                    <Wifi className="w-4 h-4" />
+                    <span className="text-xs font-medium">Tempo Real</span>
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-300" />
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="w-4 h-4" />
+                    <span className="text-xs font-medium">Offline</span>
+                  </>
+                )}
+              </div>
+
               <button
                 onClick={() => router.push('/checklists/templates')}
                 className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-5 py-3 rounded-xl font-bold shadow-lg border border-white/30 transition-all duration-300 hover:scale-105"
@@ -314,7 +396,7 @@ export default function ChecklistsPage() {
                 Templates
               </button>
               <button
-                onClick={fetchExecutions}
+                onClick={() => { fetchExecutions(); realtimeRefresh(); }}
                 disabled={loading}
                 className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-5 py-3 rounded-xl font-bold shadow-lg border border-white/30 disabled:opacity-50 transition-all duration-300 hover:scale-105"
               >

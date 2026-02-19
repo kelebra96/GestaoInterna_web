@@ -18,28 +18,29 @@ interface KPICardProps {
   valueSuffix?: string;
 }
 
+// Design System Colors - Alinhado com globals.css
 const colorClasses = {
-  primary: 'bg-[#1F53A2]',
-  secondary: 'bg-[#5C94CC]',
-  success: 'bg-[#4CAF50]',
-  warning: 'bg-[#FF9800]',
-  accent: 'bg-[#E82129]',
+  primary: 'bg-[#16476A]',    // Deep Blue - Primary 500
+  secondary: 'bg-[#3B7FAD]',  // Primary 400
+  success: 'bg-[#3B9797]',    // Teal - Success
+  warning: 'bg-[#F59E0B]',    // Warning 500
+  accent: 'bg-[#BF092F]',     // Error 500
 };
 
 const colorRings = {
-  primary: 'ring-[#1F53A2]/20',
-  secondary: 'ring-[#5C94CC]/20',
-  success: 'ring-[#4CAF50]/20',
-  warning: 'ring-[#FF9800]/20',
-  accent: 'ring-[#E82129]/20',
+  primary: 'ring-[#16476A]/20',
+  secondary: 'ring-[#3B7FAD]/20',
+  success: 'ring-[#3B9797]/20',
+  warning: 'ring-[#F59E0B]/20',
+  accent: 'ring-[#BF092F]/20',
 };
 
 const colorHex = {
-  primary: '#1F53A2',
-  secondary: '#5C94CC',
-  success: '#4CAF50',
-  warning: '#FF9800',
-  accent: '#E82129',
+  primary: '#16476A',
+  secondary: '#3B7FAD',
+  success: '#3B9797',
+  warning: '#F59E0B',
+  accent: '#BF092F',
 };
 
 export default function KPICard({
@@ -54,21 +55,21 @@ export default function KPICard({
   valueSuffix,
 }: KPICardProps) {
   return (
-    <div className="bg-[#FFFFFF] rounded-xl shadow-[0_12px_30px_-12px_rgba(0,0,0,0.35)] hover:shadow-[0_18px_40px_-12px_rgba(0,0,0,0.38)] hover:-translate-y-0.5 transition-all duration-300 border border-[#E0E0E0] hover:border-[#1F53A2]/30 relative overflow-hidden p-6 pb-8">
+    <div className="bg-surface rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 border border-border hover:border-primary-300 relative overflow-hidden p-6 pb-8">
       <div className="flex items-center justify-between relative z-10">
         <div className="flex-1">
-          <p className="text-sm font-semibold text-[#757575] mb-2 uppercase tracking-wide">{title}</p>
-          <h3 className="text-4xl font-bold text-[#212121] mb-1">
+          <p className="text-sm font-semibold text-text-secondary mb-2 uppercase tracking-wide">{title}</p>
+          <h3 className="text-4xl font-bold text-text-primary mb-1">
             {valuePrefix}
             {value}
             {valueSuffix}
           </h3>
           {description && (
-            <p className="text-sm text-[#757575] mt-1">{description}</p>
+            <p className="text-sm text-text-secondary mt-1">{description}</p>
           )}
           {trend && (
             <div className="flex items-center mt-3">
-              <span className={`inline-flex items-center gap-1 text-sm font-semibold px-2 py-1 rounded-md ${trend.isPositive ? 'bg-[#4CAF50]/10 text-[#4CAF50]' : 'bg-[#E82129]/10 text-[#E82129]'}`}>
+              <span className={`inline-flex items-center gap-1 text-sm font-semibold px-2 py-1 rounded-md ${trend.isPositive ? 'bg-success-50 text-success-600' : 'bg-error-50 text-error-600'}`}>
                 {trend.isPositive ? (
                   <ArrowUpRight className="w-4 h-4" />
                 ) : (
@@ -76,7 +77,7 @@ export default function KPICard({
                 )}
                 {Math.abs(trend.value)}%
               </span>
-              <span className="text-xs text-[#757575] ml-2">vs período anterior</span>
+              <span className="text-xs text-text-tertiary ml-2">vs período anterior</span>
             </div>
           )}
         </div>
@@ -94,7 +95,7 @@ export default function KPICard({
                   <stop offset="95%" stopColor={colorHex[color]} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <Area type="monotone" dataKey="v" stroke="#E0E0E0" strokeWidth={1.5} fill={`url(#kpi-${color}-spark)`} />
+              <Area type="monotone" dataKey="v" stroke={colorHex[color]} strokeWidth={1.5} strokeOpacity={0.4} fill={`url(#kpi-${color}-spark)`} />
             </AreaChart>
           </ResponsiveContainer>
         </div>

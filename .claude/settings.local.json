@@ -84,7 +84,8 @@
       "Bash(powershell -Command:*)",
       "Bash(node:*)",
       "Bash(del \"D:\\\\myinventory\\\\WEB\\\\test-redis.js\")",
-      "Bash(npm run dev:turbo:*)"
+      "Bash(npm run dev:turbo:*)",
+      "Bash(npx next lint:*)"
     ],
     "deny": [],
     "ask": []

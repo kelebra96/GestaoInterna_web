@@ -2,49 +2,90 @@
  * Redis Connection for BullMQ
  *
  * BullMQ requer conexão TCP Redis (não REST API).
- * Usa ioredis com as credenciais do Upstash.
  *
- * Configuração via variáveis de ambiente:
- * - REDIS_HOST: Host do Redis
- * - REDIS_PORT: Porta (default: 6379)
- * - REDIS_PASSWORD: Senha de autenticação
- * - REDIS_TLS_ENABLED: Usar TLS (default: true para Upstash)
+ * Configuração via variáveis de ambiente (em ordem de prioridade):
+ * - REDIS_URL: URL completa (redis://:password@host:port)
+ * - REDIS_HOST + REDIS_PASSWORD: Configuração separada
+ * - REDIS_TLS_ENABLED: Usar TLS (default: false)
  */
 
 import { ConnectionOptions } from 'bullmq';
 
-// Verificar se estamos em ambiente de desenvolvimento sem Redis
-const isDevelopment = process.env.NODE_ENV === 'development';
-const hasRedisConfig = !!(process.env.REDIS_HOST && process.env.REDIS_PASSWORD);
+/**
+ * Parse REDIS_URL para extrair host, port e password
+ * Formato: redis://:password@host:port
+ */
+function parseRedisUrl(url: string): { host: string; port: number; password?: string } | null {
+  try {
+    const parsed = new URL(url);
+    return {
+      host: parsed.hostname,
+      port: parseInt(parsed.port || '6379', 10),
+      password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
+    };
+  } catch {
+    console.error('[Queues] Erro ao parsear REDIS_URL');
+    return null;
+  }
+}
+
+// Verificar configuração disponível
+const redisUrl = process.env.REDIS_URL;
+const hasRedisUrl = !!redisUrl;
+const hasRedisHostConfig = !!(process.env.REDIS_HOST && process.env.REDIS_PASSWORD);
+const hasRedisConfig = hasRedisUrl || hasRedisHostConfig;
 
 /**
  * Configuração de conexão para BullMQ
- * Compatível com Upstash Redis (TLS habilitado)
+ * Compatível com Redis local e Upstash
  */
 export function getQueueConnection(): ConnectionOptions {
-  if (!hasRedisConfig) {
-    console.warn('[Queues] Redis não configurado. Filas não funcionarão.');
-    // Retorna configuração dummy que vai falhar - melhor do que silently não funcionar
-    return {
-      host: 'localhost',
-      port: 6379,
+  // Prioridade 1: REDIS_URL
+  if (hasRedisUrl) {
+    const parsed = parseRedisUrl(redisUrl!);
+    if (parsed) {
+      console.log('[Queues] Usando REDIS_URL para conexão');
+      const connection: ConnectionOptions = {
+        host: parsed.host,
+        port: parsed.port,
+        password: parsed.password,
+        maxRetriesPerRequest: null,
+        enableReadyCheck: false,
+      };
+
+      if (process.env.REDIS_TLS_ENABLED === 'true') {
+        connection.tls = {};
+      }
+
+      return connection;
+    }
+  }
+
+  // Prioridade 2: REDIS_HOST + REDIS_PASSWORD
+  if (hasRedisHostConfig) {
+    console.log('[Queues] Usando REDIS_HOST para conexão');
+    const connection: ConnectionOptions = {
+      host: process.env.REDIS_HOST!,
+      port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      password: process.env.REDIS_PASSWORD!,
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
     };
+
+    if (process.env.REDIS_TLS_ENABLED === 'true') {
+      connection.tls = {};
+    }
+
+    return connection;
   }
 
-  const connection: ConnectionOptions = {
-    host: process.env.REDIS_HOST!,
-    port: parseInt(process.env.REDIS_PORT || '6379', 10),
-    password: process.env.REDIS_PASSWORD!,
-    maxRetriesPerRequest: null, // Necessário para BullMQ
-    enableReadyCheck: false, // Melhora performance
+  // Fallback: configuração local sem senha
+  console.warn('[Queues] Redis não configurado. Filas não funcionarão.');
+  return {
+    host: 'localhost',
+    port: 6379,
+    maxRetriesPerRequest: null,
   };
-
-  // Upstash requer TLS
-  if (process.env.REDIS_TLS_ENABLED === 'true') {
-    connection.tls = {};
-  }
-
-  return connection;
 }
 
 /**
@@ -83,7 +124,11 @@ export const defaultWorkerOptions = {
  * Verifica se as filas estão configuradas
  */
 export function isQueueConfigured(): boolean {
-  return hasRedisConfig;
+  if (hasRedisUrl) {
+    const parsed = parseRedisUrl(redisUrl!);
+    return !!parsed;
+  }
+  return hasRedisHostConfig;
 }
 
 export const queueConnection = getQueueConnection();

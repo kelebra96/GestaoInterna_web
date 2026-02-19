@@ -21,6 +21,30 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useMLDashboard } from '@/hooks/usePrediction';
 
+// Design System Colors
+const COLORS = {
+  primary: '#16476A',
+  primaryLight: '#3B7FAD',
+  teal: '#3B9797',
+  warning: '#F59E0B',
+  warningDark: '#D97706',
+  error: '#BF092F',
+  errorDark: '#9A0726',
+  success: '#3B9797',
+  successDark: '#2D7575',
+  text: {
+    primary: '#212121',
+    secondary: '#757575',
+    muted: '#9E9E9E',
+  },
+  background: {
+    primary: '#F8F9FA',
+    secondary: '#E9ECEF',
+    card: '#FFFFFF',
+  },
+  border: '#E0E0E0',
+};
+
 export default function InteligenciaPage() {
   const router = useRouter();
   const { firebaseUser, user } = useAuth();
@@ -176,7 +200,7 @@ export default function InteligenciaPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F8F9FA] to-[#E9ECEF]">
       {toast && (
-        <div className={`fixed bottom-4 right-4 z-50 px-6 py-4 rounded-xl shadow-2xl text-white font-bold animate-slideUp ${toast.type === 'success' ? 'bg-gradient-to-r from-[#4CAF50] to-[#2E7D32]' : 'bg-gradient-to-r from-[#BF092F] to-[#BF092F]'}`}>
+        <div className={`fixed bottom-4 right-4 z-50 px-6 py-4 rounded-xl shadow-2xl text-white font-bold animate-slideUp ${toast.type === 'success' ? 'bg-gradient-to-r from-[#3B9797] to-[#2D7575]' : 'bg-gradient-to-r from-[#BF092F] to-[#9A0726]'}`}>
           <div className="flex items-center gap-2">
             {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
             {toast.message}
@@ -212,7 +236,7 @@ export default function InteligenciaPage() {
               <div className="flex items-center gap-3 flex-wrap">
                 <button
                   onClick={() => handleNavigate('produtos')}
-                  className="inline-flex items-center gap-2 bg-white hover:bg-white/90 text-[#16476A] px-5 py-3 rounded-xl font-bold shadow-lg transition-all duration-300 hover:scale-105"
+                  className="inline-flex items-center gap-2 bg-white hover:bg-white/90 text-[#16476A] px-5 py-3 rounded-xl font-bold shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl"
                 >
                   <Package className="w-5 h-5" />
                   Analise Produtos
@@ -225,12 +249,19 @@ export default function InteligenciaPage() {
                   Importar
                 </button>
                 <button
+                  onClick={() => handleNavigate('importar-varejo')}
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-[#3B9797] to-[#2D7575] hover:from-[#2D7575] hover:to-[#1F5555] text-white px-5 py-3 rounded-xl font-bold shadow-lg transition-all duration-300 hover:scale-105"
+                >
+                  <FileText className="w-5 h-5" />
+                  Importar Varejo
+                </button>
+                <button
                   onClick={runAnalysis}
                   disabled={isAnalyzing || loading}
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-[#FF9800] to-[#F57C00] hover:from-[#F57C00] hover:to-[#E65100] text-white px-5 py-3 rounded-xl font-bold shadow-lg disabled:opacity-50 transition-all duration-300 hover:scale-105"
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-[#F59E0B] to-[#D97706] hover:from-[#D97706] hover:to-[#B45309] text-white px-5 py-3 rounded-xl font-bold shadow-lg disabled:opacity-50 transition-all duration-300 hover:scale-105"
                 >
                   <Brain className={`w-5 h-5 ${isAnalyzing ? 'animate-pulse' : ''}`} />
-                  {isAnalyzing ? 'Analisando...' : 'Gerar Análise'}
+                  {isAnalyzing ? 'Analisando...' : 'Gerar Analise'}
                 </button>
                 <button
                   onClick={() => handleNavigate('configuracoes')}
@@ -292,28 +323,28 @@ export default function InteligenciaPage() {
                 icon={<Lightbulb className="w-6 h-6 text-white" />}
                 label="Recomendacoes Pendentes"
                 value={pendingRecCount}
-                bgGradient="from-[#FF9800] to-[#F57C00]"
+                bgGradient="from-[#F59E0B] to-[#D97706]"
                 onClick={() => handleNavigate('recomendacoes')}
               />
               <StatCard
                 icon={<TrendingUp className="w-6 h-6 text-white" />}
                 label="Economia Potencial"
                 value={formatCurrency(potentialSavings)}
-                bgGradient="from-[#4CAF50] to-[#2E7D32]"
+                bgGradient="from-[#3B9797] to-[#2D7575]"
               />
               <StatCard
                 icon={<AlertTriangle className="w-6 h-6 text-white" />}
                 label="Anomalias Abertas"
                 value={openAnomalies}
                 subValue={criticalAnomalies > 0 ? `${criticalAnomalies} criticas` : undefined}
-                bgGradient="from-[#BF092F] to-[#8B0000]"
+                bgGradient="from-[#BF092F] to-[#9A0726]"
                 onClick={() => handleNavigate('anomalias')}
               />
               <StatCard
                 icon={<Users className="w-6 h-6 text-white" />}
                 label="Clusters Ativos"
                 value={totalClusters}
-                bgGradient="from-[#16476A] to-[#3B9797]"
+                bgGradient="from-[#16476A] to-[#3B7FAD]"
                 onClick={() => handleNavigate('clusters')}
               />
             </div>
@@ -322,7 +353,7 @@ export default function InteligenciaPage() {
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Recommendations */}
               <div className="bg-white rounded-2xl shadow-xl border border-[#E0E0E0] overflow-hidden">
-                <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] px-6 py-4">
+                <div className="bg-gradient-to-r from-[#F59E0B] to-[#D97706] px-6 py-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-bold text-white flex items-center gap-2">
                       <Lightbulb className="w-5 h-5" />
@@ -330,7 +361,7 @@ export default function InteligenciaPage() {
                     </h2>
                     <button
                       onClick={() => handleNavigate('recomendacoes')}
-                      className="text-white/80 hover:text-white text-sm font-medium flex items-center gap-1"
+                      className="text-white/80 hover:text-white text-sm font-medium flex items-center gap-1 transition-colors"
                     >
                       Ver todas <ArrowRight className="w-4 h-4" />
                     </button>
@@ -342,15 +373,15 @@ export default function InteligenciaPage() {
                   ) : (
                     <div className="space-y-3">
                       {dashboard.recommendations.recent.slice(0, 3).map((rec) => (
-                        <div key={rec.id} className="p-4 bg-gradient-to-r from-[#F8F9FA] to-white rounded-xl border border-[#E0E0E0] hover:shadow-md transition-all">
+                        <div key={rec.id} className="group p-4 bg-gradient-to-r from-[#F8F9FA] to-white rounded-xl border border-[#E0E0E0] hover:border-[#F59E0B]/30 hover:shadow-md transition-all">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <p className="font-bold text-[#212121]">{rec.title}</p>
+                              <p className="font-bold text-[#212121] group-hover:text-[#16476A] transition-colors">{rec.title}</p>
                               <p className="text-sm text-[#757575] mt-1 line-clamp-2">{rec.description}</p>
                             </div>
-                            <span className={`ml-3 px-3 py-1 text-xs font-bold rounded-lg ${
+                            <span className={`ml-3 px-3 py-1 text-xs font-bold rounded-lg whitespace-nowrap ${
                               rec.priority === 'critical' ? 'bg-[#BF092F]/10 text-[#BF092F]' :
-                              rec.priority === 'high' ? 'bg-[#FF9800]/10 text-[#FF9800]' :
+                              rec.priority === 'high' ? 'bg-[#F59E0B]/10 text-[#D97706]' :
                               rec.priority === 'medium' ? 'bg-[#3B9797]/10 text-[#3B9797]' :
                               'bg-[#757575]/10 text-[#757575]'
                             }`}>
@@ -368,7 +399,7 @@ export default function InteligenciaPage() {
 
               {/* Anomalies */}
               <div className="bg-white rounded-2xl shadow-xl border border-[#E0E0E0] overflow-hidden">
-                <div className="bg-gradient-to-r from-[#BF092F] to-[#8B0000] px-6 py-4">
+                <div className="bg-gradient-to-r from-[#BF092F] to-[#9A0726] px-6 py-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-bold text-white flex items-center gap-2">
                       <AlertTriangle className="w-5 h-5" />
@@ -376,7 +407,7 @@ export default function InteligenciaPage() {
                     </h2>
                     <button
                       onClick={() => handleNavigate('anomalias')}
-                      className="text-white/80 hover:text-white text-sm font-medium flex items-center gap-1"
+                      className="text-white/80 hover:text-white text-sm font-medium flex items-center gap-1 transition-colors"
                     >
                       Ver todas <ArrowRight className="w-4 h-4" />
                     </button>
@@ -388,16 +419,16 @@ export default function InteligenciaPage() {
                   ) : (
                     <div className="space-y-3">
                       {dashboard.anomalies.recent.slice(0, 3).map((anomaly) => (
-                        <div key={anomaly.id} className="p-4 bg-gradient-to-r from-[#F8F9FA] to-white rounded-xl border border-[#E0E0E0] hover:shadow-md transition-all">
+                        <div key={anomaly.id} className="group p-4 bg-gradient-to-r from-[#F8F9FA] to-white rounded-xl border border-[#E0E0E0] hover:border-[#BF092F]/30 hover:shadow-md transition-all">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <p className="font-bold text-[#212121]">{anomaly.entityName || 'Anomalia'}</p>
+                              <p className="font-bold text-[#212121] group-hover:text-[#16476A] transition-colors">{anomaly.entityName || 'Anomalia'}</p>
                               <p className="text-sm text-[#757575] mt-1">{translateMetricType(anomaly.metricType)} - {translateAnomalyType(anomaly.anomalyType)}</p>
                             </div>
-                            <span className={`ml-3 px-3 py-1 text-xs font-bold rounded-lg ${
+                            <span className={`ml-3 px-3 py-1 text-xs font-bold rounded-lg whitespace-nowrap ${
                               anomaly.severity === 'critical' ? 'bg-[#BF092F]/10 text-[#BF092F]' :
-                              anomaly.severity === 'high' ? 'bg-[#FF9800]/10 text-[#FF9800]' :
-                              anomaly.severity === 'medium' ? 'bg-[#F57C00]/10 text-[#F57C00]' :
+                              anomaly.severity === 'high' ? 'bg-[#F59E0B]/10 text-[#D97706]' :
+                              anomaly.severity === 'medium' ? 'bg-[#3B7FAD]/10 text-[#3B7FAD]' :
                               'bg-[#757575]/10 text-[#757575]'
                             }`}>
                               {anomaly.severity === 'critical' ? 'Critico' :
@@ -415,7 +446,7 @@ export default function InteligenciaPage() {
 
             {/* Clusters */}
             <div className="bg-white rounded-2xl shadow-xl border border-[#E0E0E0] overflow-hidden">
-              <div className="bg-gradient-to-r from-[#16476A] to-[#3B9797] px-6 py-4">
+              <div className="bg-gradient-to-r from-[#16476A] to-[#3B7FAD] px-6 py-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
                     <Users className="w-5 h-5" />
@@ -423,7 +454,7 @@ export default function InteligenciaPage() {
                   </h2>
                   <button
                     onClick={() => handleNavigate('clusters')}
-                    className="text-white/80 hover:text-white text-sm font-medium flex items-center gap-1"
+                    className="text-white/80 hover:text-white text-sm font-medium flex items-center gap-1 transition-colors"
                   >
                     Ver detalhes <ArrowRight className="w-4 h-4" />
                   </button>
@@ -435,13 +466,13 @@ export default function InteligenciaPage() {
                     title="Clusters de Lojas"
                     count={dashboard.clusters.stores.length}
                     icon={<Users className="w-6 h-6" />}
-                    color="#16476A"
+                    color={COLORS.primary}
                   />
                   <ClusterCard
                     title="Clusters de Produtos"
                     count={dashboard.clusters.products.length}
                     icon={<TrendingUp className="w-6 h-6" />}
-                    color="#3B9797"
+                    color={COLORS.teal}
                   />
                 </div>
               </div>
@@ -451,7 +482,7 @@ export default function InteligenciaPage() {
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Predictions */}
               <div className="bg-white rounded-2xl shadow-xl border border-[#E0E0E0] overflow-hidden">
-                <div className="bg-gradient-to-r from-[#132440] to-[#16476A] px-6 py-4">
+                <div className="bg-gradient-to-r from-[#16476A] to-[#3B7FAD] px-6 py-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-bold text-white flex items-center gap-2">
                       <TrendingUp className="w-5 h-5" />
@@ -459,7 +490,7 @@ export default function InteligenciaPage() {
                     </h2>
                     <button
                       onClick={() => handleNavigate('predicoes')}
-                      className="text-white/80 hover:text-white text-sm font-medium flex items-center gap-1"
+                      className="text-white/80 hover:text-white text-sm font-medium flex items-center gap-1 transition-colors"
                     >
                       Ver todas <ArrowRight className="w-4 h-4" />
                     </button>
@@ -471,15 +502,15 @@ export default function InteligenciaPage() {
                   ) : (
                     <div className="space-y-3">
                       {dashboard.predictions.upcoming.slice(0, 4).map((pred) => (
-                        <div key={pred.id} className="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-xl">
+                        <div key={pred.id} className="group flex items-center justify-between p-3 bg-[#F8F9FA] rounded-xl hover:bg-[#16476A]/5 transition-colors">
                           <div className="flex items-center gap-3">
                             {pred.targetDate && (
-                              <span className="text-sm font-bold text-[#16476A] bg-[#16476A]/10 px-2 py-1 rounded">
+                              <span className="text-sm font-bold text-[#16476A] bg-[#16476A]/10 px-2 py-1 rounded-lg">
                                 {formatDate(new Date(pred.targetDate))}
                               </span>
                             )}
                             <div>
-                              <p className="font-medium text-[#212121]">
+                              <p className="font-medium text-[#212121] group-hover:text-[#16476A] transition-colors">
                                 {translatePredictionType(pred.predictionType)}
                               </p>
                               <p className="text-xs text-[#757575]">
@@ -501,7 +532,7 @@ export default function InteligenciaPage() {
 
               {/* Events */}
               <div className="bg-white rounded-2xl shadow-xl border border-[#E0E0E0] overflow-hidden">
-                <div className="bg-gradient-to-r from-[#3B9797] to-[#4CAF50] px-6 py-4">
+                <div className="bg-gradient-to-r from-[#3B9797] to-[#2D7575] px-6 py-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-bold text-white flex items-center gap-2">
                       <Calendar className="w-5 h-5" />
@@ -509,7 +540,7 @@ export default function InteligenciaPage() {
                     </h2>
                     <button
                       onClick={() => handleNavigate('sazonalidade')}
-                      className="text-white/80 hover:text-white text-sm font-medium flex items-center gap-1"
+                      className="text-white/80 hover:text-white text-sm font-medium flex items-center gap-1 transition-colors"
                     >
                       Ver calendario <ArrowRight className="w-4 h-4" />
                     </button>
@@ -521,22 +552,24 @@ export default function InteligenciaPage() {
                   ) : (
                     <div className="space-y-3">
                       {dashboard.seasonality.upcomingEvents.slice(0, 5).map((event) => (
-                        <div key={event.id} className="flex items-center justify-between p-3 bg-[#F8F9FA] rounded-xl">
+                        <div key={event.id} className="group flex items-center justify-between p-3 bg-[#F8F9FA] rounded-xl hover:bg-[#3B9797]/5 transition-colors">
                           <div className="flex items-center gap-3">
                             {event.eventDate && (
-                              <span className="text-sm font-bold text-[#16476A] bg-[#16476A]/10 px-2 py-1 rounded">
+                              <span className="text-sm font-bold text-[#3B9797] bg-[#3B9797]/10 px-2 py-1 rounded-lg">
                                 {formatDate(event.eventDate)}
                               </span>
                             )}
-                            <span className="font-medium text-[#212121]">{event.eventName}</span>
+                            <span className="font-medium text-[#212121] group-hover:text-[#16476A] transition-colors">{event.eventName}</span>
                           </div>
                           <span className={`px-2 py-1 text-xs font-bold rounded-lg ${
                             event.eventType === 'holiday' ? 'bg-[#BF092F]/10 text-[#BF092F]' :
-                            event.eventType === 'promotion' ? 'bg-[#4CAF50]/10 text-[#4CAF50]' :
+                            event.eventType === 'promotion' ? 'bg-[#3B9797]/10 text-[#3B9797]' :
                             event.eventType === 'season' ? 'bg-[#16476A]/10 text-[#16476A]' :
                             'bg-[#757575]/10 text-[#757575]'
                           }`}>
-                            {event.eventType}
+                            {event.eventType === 'holiday' ? 'Feriado' :
+                             event.eventType === 'promotion' ? 'Promocao' :
+                             event.eventType === 'season' ? 'Estacao' : event.eventType}
                           </span>
                         </div>
                       ))}
@@ -549,7 +582,7 @@ export default function InteligenciaPage() {
             {/* Seasonal Patterns */}
             {dashboard.seasonality.activePatterns.length > 0 && (
               <div className="bg-white rounded-2xl shadow-xl border border-[#E0E0E0] overflow-hidden">
-                <div className="bg-gradient-to-r from-[#3B9797] to-[#16476A] px-6 py-4">
+                <div className="bg-gradient-to-r from-[#3B9797] to-[#3B7FAD] px-6 py-4">
                   <h2 className="text-lg font-bold text-white flex items-center gap-2">
                     <TrendingUp className="w-5 h-5" />
                     Padroes Sazonais Detectados
@@ -558,16 +591,16 @@ export default function InteligenciaPage() {
                 <div className="p-6">
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {dashboard.seasonality.activePatterns.slice(0, 6).map((pattern) => (
-                      <div key={pattern.id} className="p-4 bg-gradient-to-r from-[#F8F9FA] to-white rounded-xl border border-[#E0E0E0]">
+                      <div key={pattern.id} className="group p-4 bg-gradient-to-r from-[#F8F9FA] to-white rounded-xl border border-[#E0E0E0] hover:border-[#3B9797]/30 hover:shadow-md transition-all">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="font-bold text-[#212121]">
+                          <span className="font-bold text-[#212121] group-hover:text-[#16476A] transition-colors">
                             {pattern.patternType === 'daily' ? 'Diario' :
                              pattern.patternType === 'weekly' ? 'Semanal' :
                              pattern.patternType === 'monthly' ? 'Mensal' :
                              pattern.patternType === 'yearly' ? 'Anual' :
                              pattern.patternType}
                           </span>
-                          <span className="text-sm font-bold text-[#3B9797]">
+                          <span className="text-sm font-bold text-[#3B9797] bg-[#3B9797]/10 px-2 py-0.5 rounded-lg">
                             {(pattern.strength * 100).toFixed(0)}%
                           </span>
                         </div>
@@ -576,7 +609,7 @@ export default function InteligenciaPage() {
                         </p>
                         <div className="mt-3 h-2 bg-[#E0E0E0] rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-gradient-to-r from-[#3B9797] to-[#16476A] rounded-full transition-all"
+                            className="h-full bg-gradient-to-r from-[#3B9797] to-[#16476A] rounded-full transition-all group-hover:from-[#16476A] group-hover:to-[#3B7FAD]"
                             style={{ width: `${pattern.strength * 100}%` }}
                           />
                         </div>
@@ -607,18 +640,34 @@ function StatCard({ icon, label, value, subValue, bgGradient, onClick }: StatCar
   return (
     <div
       onClick={onClick}
-      className={`bg-gradient-to-br ${bgGradient} p-6 rounded-2xl shadow-xl ${
-        onClick ? 'cursor-pointer hover:scale-105 transition-all duration-300' : ''
+      className={`bg-gradient-to-br ${bgGradient} p-6 rounded-2xl shadow-xl relative overflow-hidden group ${
+        onClick ? 'cursor-pointer hover:scale-[1.02] hover:shadow-2xl transition-all duration-300' : ''
       }`}
     >
-      <div className="flex items-center gap-3 mb-3">
-        <div className="p-2 bg-white/20 rounded-xl">
-          {icon}
-        </div>
+      {/* Background pattern for depth */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full -translate-y-1/2 translate-x-1/2" />
       </div>
-      <p className="text-white/80 text-sm font-medium">{label}</p>
-      <p className="text-3xl font-bold text-white mt-1">{value}</p>
-      {subValue && <p className="text-white/70 text-sm mt-1">{subValue}</p>}
+      <div className="relative">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm group-hover:bg-white/30 transition-colors">
+            {icon}
+          </div>
+        </div>
+        <p className="text-white/80 text-sm font-medium">{label}</p>
+        <p className="text-3xl font-bold text-white mt-1 tracking-tight">{value}</p>
+        {subValue && (
+          <p className="text-white/70 text-sm mt-1 flex items-center gap-1">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-white/60" />
+            {subValue}
+          </p>
+        )}
+        {onClick && (
+          <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+            <ArrowRight className="w-5 h-5 text-white/80" />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -633,14 +682,21 @@ interface ClusterCardProps {
 
 function ClusterCard({ title, count, icon, color }: ClusterCardProps) {
   return (
-    <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-[#F8F9FA] to-white rounded-xl border border-[#E0E0E0]">
-      <div className="p-3 rounded-xl" style={{ backgroundColor: `${color}20` }}>
+    <div
+      className="group flex items-center gap-4 p-5 bg-gradient-to-r from-[#F8F9FA] to-white rounded-xl border border-[#E0E0E0] hover:shadow-md transition-all cursor-pointer"
+      style={{ borderLeftWidth: '4px', borderLeftColor: color }}
+    >
+      <div
+        className="p-3 rounded-xl transition-transform group-hover:scale-110"
+        style={{ backgroundColor: `${color}15` }}
+      >
         <div style={{ color }}>{icon}</div>
       </div>
-      <div>
-        <p className="text-sm text-[#757575]">{title}</p>
-        <p className="text-2xl font-bold text-[#212121]">{count}</p>
+      <div className="flex-1">
+        <p className="text-sm text-[#757575] font-medium">{title}</p>
+        <p className="text-2xl font-bold text-[#212121] group-hover:text-[#16476A] transition-colors">{count}</p>
       </div>
+      <ArrowRight className="w-5 h-5 text-[#757575] opacity-0 group-hover:opacity-100 transition-opacity" />
     </div>
   );
 }
@@ -653,11 +709,12 @@ interface EmptyStateProps {
 
 function EmptyState({ message, icon }: EmptyStateProps) {
   return (
-    <div className="text-center py-8">
-      <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#F8F9FA] text-[#757575] mb-3">
+    <div className="text-center py-10">
+      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#F8F9FA] to-[#E9ECEF] text-[#9E9E9E] mb-4 shadow-inner">
         {icon}
       </div>
-      <p className="text-[#757575]">{message}</p>
+      <p className="text-[#757575] font-medium">{message}</p>
+      <p className="text-sm text-[#9E9E9E] mt-1">Os dados serao exibidos aqui quando disponiveis</p>
     </div>
   );
 }

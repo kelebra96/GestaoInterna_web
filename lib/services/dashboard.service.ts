@@ -422,12 +422,21 @@ export async function buildDashboardData(): Promise<DashboardData> {
       }
 
       // Itens por comprador
-      const compradorId = produtoInfo?.comprador || item.comprador;
-      if (compradorId) {
-        if (!itensPorComprador[compradorId]) {
-          itensPorComprador[compradorId] = { count: 0, name: lookup.getUserName(compradorId) };
+      // O campo comprador pode ser um nome (texto) ou um UUID
+      const compradorValue = produtoInfo?.comprador || item.comprador;
+      if (compradorValue) {
+        const compradorStr = String(compradorValue).trim();
+        if (compradorStr) {
+          // Verificar se é um UUID (para buscar o nome) ou um nome direto
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(compradorStr);
+          const compradorName = isUuid ? lookup.getUserName(compradorStr) : compradorStr;
+          const compradorKey = compradorStr.toLowerCase(); // Normalizar chave para evitar duplicatas
+
+          if (!itensPorComprador[compradorKey]) {
+            itensPorComprador[compradorKey] = { count: 0, name: compradorName };
+          }
+          itensPorComprador[compradorKey].count++;
         }
-        itensPorComprador[compradorId].count++;
       }
     }
   }

@@ -192,7 +192,7 @@ class EventBus {
    * Assina um tipo de evento
    */
   subscribe<T extends EventType>(
-    pattern: T | `${string}.*`,
+    pattern: T | `${string}.*` | '*',
     handler: EventHandler<T>,
     options: SubscribeOptions = {}
   ): () => void {

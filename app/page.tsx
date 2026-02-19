@@ -201,7 +201,7 @@ function DashboardSkeleton() {
 // ============================================================================
 
 function SectionHeader({ icon: Icon, title, subtitle, badge }: {
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
   title: string;
   subtitle?: string;
   badge?: React.ReactNode;

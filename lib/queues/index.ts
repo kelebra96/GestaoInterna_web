@@ -112,7 +112,18 @@ export async function getQueueStats(): Promise<
     isPaused: boolean;
   }>
 > {
-  const stats = [];
+  const stats: Array<{
+    name: string;
+    counts: {
+      waiting: number;
+      active: number;
+      completed: number;
+      failed: number;
+      delayed: number;
+      paused: number;
+    };
+    isPaused: boolean;
+  }> = [];
 
   for (const [name, queue] of queueRegistry) {
     try {
@@ -123,7 +134,14 @@ export async function getQueueStats(): Promise<
 
       stats.push({
         name,
-        counts,
+        counts: counts as {
+          waiting: number;
+          active: number;
+          completed: number;
+          failed: number;
+          delayed: number;
+          paused: number;
+        },
         isPaused,
       });
     } catch (error: any) {
@@ -191,7 +209,7 @@ export async function cleanQueue(
   queueName: string,
   grace: number = 60000, // Jobs mais antigos que 1 minuto
   status: 'completed' | 'failed' = 'completed'
-): Promise<number[]> {
+): Promise<string[]> {
   const queue = queueRegistry.get(queueName);
   if (!queue) return [];
 

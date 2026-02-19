@@ -34,6 +34,7 @@ export function registerNotificationHandlers(): void {
       for (const admin of admins) {
         if (admin.fcm_token) {
           await addFCMNotification({
+            userId: admin.id,
             token: admin.fcm_token,
             title: 'Nova Solicitação',
             body: `Uma nova solicitação com ${itemCount} item(ns) foi criada`,
@@ -72,7 +73,9 @@ export function registerNotificationHandlers(): void {
         .eq('id', solicitacaoId)
         .single();
 
-      if (!solicitacao?.users?.fcm_token) {
+      // Supabase returns joined relation as array, extract first element
+      const user = Array.isArray(solicitacao?.users) ? solicitacao.users[0] : solicitacao?.users;
+      if (!user?.fcm_token) {
         return;
       }
 
@@ -86,7 +89,8 @@ export function registerNotificationHandlers(): void {
       };
 
       await addFCMNotification({
-        token: solicitacao.users.fcm_token,
+        userId: solicitacao!.created_by,
+        token: user.fcm_token,
         title: 'Status Atualizado',
         body: `Sua solicitação mudou de ${statusLabels[fromStatus] || fromStatus} para ${statusLabels[toStatus] || toStatus}`,
         data: {
@@ -144,6 +148,7 @@ export function registerNotificationHandlers(): void {
       for (const admin of admins) {
         if (admin.fcm_token) {
           await addFCMNotification({
+            userId: admin.id,
             token: admin.fcm_token,
             title: 'Inventário Concluído',
             body: message,
@@ -193,6 +198,7 @@ export function registerNotificationHandlers(): void {
       for (const admin of superAdmins) {
         if (admin.fcm_token) {
           await addFCMNotification({
+            userId: admin.id,
             token: admin.fcm_token,
             title: '⚠️ Erro Crítico do Sistema',
             body: errorMessage.slice(0, 100),

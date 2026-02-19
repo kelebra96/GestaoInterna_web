@@ -92,13 +92,12 @@ export default function StatusChart({ data }: StatusChartProps) {
               paddingAngle={3}
               dataKey="value"
               nameKey="name"
-              activeIndex={activeIndex}
-              activeShape={renderActiveShape}
               onMouseEnter={(_, index) => setActiveIndex(index)}
               onMouseLeave={() => setActiveIndex(undefined)}
               animationBegin={0}
               animationDuration={800}
               animationEasing="ease-out"
+              {...({ activeIndex, activeShape: renderActiveShape } as any)}
             >
               {chartData.map((entry) => (
                 <Cell key={entry.key} fill={STATUS_CONFIG[entry.key].color} stroke="transparent" />

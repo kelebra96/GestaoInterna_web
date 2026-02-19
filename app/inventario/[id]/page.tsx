@@ -16,8 +16,13 @@ import {
   Lock,
   Trash2,
   Download,
+  Wifi,
+  WifiOff,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useInventoryCountsRealtime } from '@/hooks/useInventoryCountsRealtime';
 
 interface Inventory {
   id: string;
@@ -59,6 +64,34 @@ export default function InventoryDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [finalizing, setFinalizing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Supabase Realtime subscription for inventory counts
+  const {
+    counts: realtimeCounts,
+    summary: realtimeSummary,
+    isConnected: realtimeConnected,
+    lastUpdate: realtimeLastUpdate,
+    refresh: realtimeRefresh,
+    stats: realtimeStats,
+  } = useInventoryCountsRealtime({
+    inventoryId: id,
+    enabled: !!id,
+  });
+
+  // Update inventory with realtime data
+  useEffect(() => {
+    if (realtimeSummary && inventory) {
+      setInventory((prev) =>
+        prev
+          ? {
+              ...prev,
+              totalItemsCounted: realtimeSummary.totalItemsCounted,
+              addressesCompleted: realtimeSummary.addressesCompleted,
+            }
+          : prev
+      );
+    }
+  }, [realtimeSummary]);
 
   const formatDate = (value: any, options?: Intl.DateTimeFormatOptions) => {
     if (!value) return '--';
@@ -278,6 +311,31 @@ export default function InventoryDetailPage() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-3">
+                  {/* Realtime Status Indicator */}
+                  <div
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl backdrop-blur-sm border ${
+                      realtimeConnected
+                        ? 'bg-emerald-500/20 border-emerald-400/30 text-emerald-100'
+                        : 'bg-amber-500/20 border-amber-400/30 text-amber-100'
+                    }`}
+                  >
+                    {realtimeConnected ? (
+                      <>
+                        <Wifi className="w-4 h-4" />
+                        <span className="text-xs font-medium">Tempo Real</span>
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-300" />
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <WifiOff className="w-4 h-4" />
+                        <span className="text-xs font-medium">Offline</span>
+                      </>
+                    )}
+                  </div>
+
                   <span
                     className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-semibold ${statusColors[derivedStatus] || 'bg-[#E0E0E0] text-[#212121]'}`}
                   >
@@ -358,7 +416,7 @@ export default function InventoryDetailPage() {
           </button>
 
           <button
-            onClick={fetchInventory}
+            onClick={() => { fetchInventory(); realtimeRefresh(); }}
             className="group rounded-2xl border border-[#E0E0E0] bg-white text-[#16476A] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
           >
             <div className="flex items-center justify-between p-4">
@@ -426,6 +484,104 @@ export default function InventoryDetailPage() {
             </div>
           </div>
         </section>
+
+        {/* Realtime Counts Stats */}
+        {realtimeConnected && realtimeStats.totalCounts > 0 && (
+          <section className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-5 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                  <Wifi className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-emerald-800">Contagens em Tempo Real</h2>
+                  <p className="text-sm text-emerald-600">
+                    {realtimeLastUpdate
+                      ? `Última atualização: ${realtimeLastUpdate.toLocaleTimeString('pt-BR')}`
+                      : 'Aguardando dados...'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+                </span>
+                <span className="text-sm font-medium text-emerald-700">Sincronizado</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="bg-white rounded-xl p-4 border border-emerald-100">
+                <p className="text-xs font-medium text-gray-500 uppercase">Total Contagens</p>
+                <p className="text-2xl font-bold text-emerald-700">{realtimeStats.totalCounts}</p>
+              </div>
+              <div className="bg-white rounded-xl p-4 border border-emerald-100">
+                <p className="text-xs font-medium text-gray-500 uppercase">Itens Únicos</p>
+                <p className="text-2xl font-bold text-blue-700">{realtimeStats.uniqueItems}</p>
+              </div>
+              <div className="bg-white rounded-xl p-4 border border-emerald-100">
+                <p className="text-xs font-medium text-gray-500 uppercase">Endereços</p>
+                <p className="text-2xl font-bold text-purple-700">{realtimeStats.uniqueAddresses}</p>
+              </div>
+              <div className="bg-white rounded-xl p-4 border border-emerald-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 uppercase">Divergências</p>
+                    <p className="text-2xl font-bold text-amber-600">
+                      {realtimeStats.excesses + realtimeStats.shortages}
+                    </p>
+                  </div>
+                  <div className="flex flex-col text-xs">
+                    <span className="flex items-center gap-1 text-red-600">
+                      <TrendingUp className="w-3 h-3" /> {realtimeStats.excesses}
+                    </span>
+                    <span className="flex items-center gap-1 text-blue-600">
+                      <TrendingDown className="w-3 h-3" /> {realtimeStats.shortages}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent counts list */}
+            {realtimeCounts.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-emerald-100">
+                <p className="text-sm font-medium text-gray-600 mb-3">Últimas contagens:</p>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {realtimeCounts.slice(0, 5).map((count) => (
+                    <div
+                      key={count.id}
+                      className="flex items-center justify-between bg-white rounded-lg p-3 border border-gray-100"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            count.diffType === 'ok'
+                              ? 'bg-emerald-500'
+                              : count.diffType === 'excess'
+                              ? 'bg-red-500'
+                              : 'bg-blue-500'
+                          }`}
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-gray-800">{count.ean}</p>
+                          <p className="text-xs text-gray-500">{count.description || count.addressCode}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-gray-800">{count.countedQuantity}</p>
+                        <p className="text-xs text-gray-500">
+                          {count.countedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {inventory.totalAddresses && inventory.totalAddresses > 0 && (
           <section className="rounded-2xl border border-[#E0E0E0] bg-white p-5 shadow-sm">

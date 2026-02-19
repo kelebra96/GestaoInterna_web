@@ -38,7 +38,7 @@ export default function UsuarioDetalhePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params?.id;
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, user: currentUser } = useAuth();
 
   const [user, setUser] = useState<Usuario | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,7 +50,7 @@ export default function UsuarioDetalhePage() {
   const [companyMap, setCompanyMap] = useState<Record<string, string>>({});
   const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([]);
 
-  const fetchUser = useCallback(async () => {
+  const fetchUser = useCallback(async (signal?: AbortSignal) => {
     if (!id) return;
     try {
       setLoading(true);
@@ -58,17 +58,19 @@ export default function UsuarioDetalhePage() {
       const token = await firebaseUser?.getIdToken(true);
       const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
-      // Carregar usuário e lojas em paralelo para validar IDs
+      // Carregar usuario e lojas em paralelo para validar IDs
       const [userRes, lojasRes] = await Promise.all([
-        fetch(`/api/usuarios/${encodeURIComponent(id)}`, { cache: 'no-store', headers }),
-        fetch('/api/lojas', { cache: 'no-store', headers }),
+        fetch(`/api/usuarios/${encodeURIComponent(id)}`, { cache: 'no-store', headers, signal }),
+        fetch('/api/lojas', { cache: 'no-store', headers, signal }),
       ]);
 
-      if (!userRes.ok) throw new Error('Falha ao carregar usuário');
+      if (signal?.aborted) return;
+
+      if (!userRes.ok) throw new Error('Falha ao carregar usuario');
       const userJson = await userRes.json();
       setUser(userJson.usuario as Usuario);
 
-      // Carregar lista de lojas válidas
+      // Carregar lista de lojas validas
       let validStoreIds = new Set<string>();
       if (lojasRes.ok) {
         const lojasJson = await lojasRes.json();
@@ -87,27 +89,35 @@ export default function UsuarioDetalhePage() {
 
       setError(null);
     } catch (e: any) {
+      if (e instanceof Error && e.name === 'AbortError') return;
       console.error(e);
       setError(e?.message || 'Erro desconhecido');
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, firebaseUser]);
 
   useEffect(() => {
-    fetchUser();
+    if (!id) return;
+
+    const abortController = new AbortController();
+    const { signal } = abortController;
+
+    fetchUser(signal);
+
     // fetch activities (best-effort)
     (async () => {
-      if (!id) return;
       try {
         const token = await firebaseUser?.getIdToken();
         const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
-        const res = await fetch(`/api/usuarios/${encodeURIComponent(id)}/activities`, { cache: 'no-store', headers });
-        if (!res.ok) return;
+        const res = await fetch(`/api/usuarios/${encodeURIComponent(id)}/activities`, { cache: 'no-store', headers, signal });
+        if (signal.aborted || !res.ok) return;
         const json = await res.json();
         setActivities(json.activities || []);
-      } catch {}
+      } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return;
+      }
     })();
 
     // fetch empresas para mapear nomes
@@ -116,7 +126,8 @@ export default function UsuarioDetalhePage() {
         const token = await firebaseUser?.getIdToken();
         const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
-        const empresasRes = await fetch('/api/empresas', { cache: 'no-store', headers });
+        const empresasRes = await fetch('/api/empresas', { cache: 'no-store', headers, signal });
+        if (signal.aborted) return;
 
         if (empresasRes.ok) {
           const empresasJson = await empresasRes.json();
@@ -127,9 +138,14 @@ export default function UsuarioDetalhePage() {
           setCompanyMap(map);
         }
       } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return;
         console.warn('Falha ao mapear empresas para nomes:', err);
       }
     })();
+
+    return () => {
+      abortController.abort();
+    };
   }, [id, fetchUser]);
 
   const patchUser = async (payload: Partial<Pick<Usuario, 'active' | 'role' | 'storeId' | 'storeIds' | 'companyId'>>) => {
@@ -314,7 +330,10 @@ export default function UsuarioDetalhePage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {[
-                    { key: 'developer', label: 'Dev', className: 'border-purple-500/30 text-purple-500 hover:bg-purple-500/10' },
+                    // Botao 'Dev' so aparece para usuarios com role 'developer'
+                    ...(currentUser?.role === 'developer' ? [
+                      { key: 'developer', label: 'Dev', className: 'border-purple-500/30 text-purple-500 hover:bg-purple-500/10' }
+                    ] : []),
                     { key: 'admin', label: 'Admin', className: 'border-[#1F53A2]/30 text-[#1F53A2] hover:bg-[#1F53A2]/10' },
                     { key: 'manager', label: 'Gerente', className: 'border-[#5C94CC]/30 text-[#5C94CC] hover:bg-[#5C94CC]/10' },
                     { key: 'agent', label: 'Agente', className: 'border-[#4CAF50]/30 text-[#4CAF50] hover:bg-[#4CAF50]/10' },

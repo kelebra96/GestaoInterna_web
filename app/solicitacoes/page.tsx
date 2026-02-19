@@ -5,6 +5,8 @@ import type { ReactElement } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSolicitacoesRealtime } from '@/hooks/useSolicitacoesRealtime';
+import { RealtimeIndicator } from '@/components/ui/RealtimeIndicator';
 import {
   MdSearch,
   MdRefresh,
@@ -23,7 +25,9 @@ import {
   MdError,
   MdClose,
   MdTrendingUp,
-  MdViewList
+  MdViewList,
+  MdWifi,
+  MdWifiOff
 } from 'react-icons/md';
 import { FaFileAlt, FaBoxOpen } from 'react-icons/fa';
 import { IoMdRefresh } from 'react-icons/io';
@@ -39,6 +43,7 @@ type Solicitacao = Omit<SolicitacaoType, 'userId' | 'storeId'> & {
   companyName?: string;
   items?: number;
   total?: number;
+  productBuyer?: string;
 };
 
 const statusLabels: Record<Status, string> = {
@@ -61,12 +66,66 @@ const statusIcon: Record<Status, ReactElement> = {
 
 export default function SolicitacoesPage() {
   const router = useRouter();
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, user } = useAuth();
   const [data, setData] = useState<Solicitacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<Record<string, boolean>>({});
   const [updateError, setUpdateError] = useState<string | null>(null);
+
+  // Supabase Realtime subscription
+  const {
+    solicitacoes: realtimeSolicitacoes,
+    isConnected: realtimeConnected,
+    lastUpdate: realtimeLastUpdate,
+    refresh: realtimeRefresh,
+  } = useSolicitacoesRealtime({
+    companyId: user?.companyId,
+    enabled: !!user?.companyId,
+  });
+
+  // Merge realtime data with local data
+  useEffect(() => {
+    if (realtimeSolicitacoes.length > 0) {
+      setData((prevData) => {
+        // Create a map of existing items by ID
+        const existingMap = new Map(prevData.map((s) => [s.id, s]));
+
+        // Update or add realtime items
+        realtimeSolicitacoes.forEach((rs) => {
+          const existing = existingMap.get(rs.id);
+          if (existing) {
+            // Update existing item
+            existingMap.set(rs.id, {
+              ...existing,
+              status: rs.status as Status,
+              itemCount: rs.itemCount,
+              updatedAt: rs.updatedAt,
+            });
+          } else {
+            // Add new item from realtime
+            existingMap.set(rs.id, {
+              id: rs.id,
+              storeId: rs.storeId,
+              storeName: rs.storeName || '',
+              userId: rs.createdBy,
+              userName: rs.userName || '',
+              companyName: rs.companyName,
+              status: rs.status as Status,
+              dayKey: rs.dayKey,
+              itemCount: rs.itemCount,
+              createdAt: rs.createdAt,
+              updatedAt: rs.updatedAt,
+            } as Solicitacao);
+          }
+        });
+
+        return Array.from(existingMap.values()).sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      });
+    }
+  }, [realtimeSolicitacoes]);
 
   // Data for filters
   const [buyers, setBuyers] = useState<{ id: string; name: string }[]>([]);
@@ -106,22 +165,22 @@ export default function SolicitacoesPage() {
     }
   };
 
-  // Extract buyers from solicitacoes data
+  // Extract buyers from solicitacoes data (product buyers)
   useEffect(() => {
     if (data.length > 0) {
-      console.log('📊 [Solicitações] Extraindo compradores dos dados:', data.map(s => ({ userId: s.userId, userName: s.userName })));
+      console.log('📊 [Solicitações] Extraindo compradores de produtos dos dados:', data.map(s => ({ productBuyer: s.productBuyer })));
 
       const buyersMap = new Map<string, string>();
       data.forEach((s) => {
-        if (s.userId && s.userName && !buyersMap.has(s.userId)) {
-          buyersMap.set(s.userId, s.userName);
+        if (s.productBuyer && !buyersMap.has(s.productBuyer)) {
+          buyersMap.set(s.productBuyer, s.productBuyer);
         }
       });
       const extractedBuyers = Array.from(buyersMap.entries())
         .map(([id, name]) => ({ id, name }))
         .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 
-      console.log('👥 [Solicitações] Compradores extraídos:', extractedBuyers);
+      console.log('👥 [Solicitações] Compradores de produtos extraídos:', extractedBuyers);
       setBuyers(extractedBuyers);
     }
   }, [data]);
@@ -181,9 +240,17 @@ export default function SolicitacoesPage() {
 
       console.log('📦 [Solicitações Page] Dados recebidos:', {
         solicitacoes: json.solicitacoes?.length || 0,
+        buyers: json.buyers?.length || 0,
       });
 
       setData(json.solicitacoes || []);
+
+      // Se a API retornou a lista de compradores, usar diretamente
+      if (json.buyers && json.buyers.length > 0) {
+        console.log('👥 [Solicitações] Compradores da API:', json.buyers);
+        setBuyers(json.buyers);
+      }
+
       setError(null);
     } catch (e: any) {
       console.error('❌ [Solicitações Page] Erro ao carregar:', e);
@@ -252,7 +319,7 @@ export default function SolicitacoesPage() {
 
     return data
       .filter((s) => (status === 'all' ? true : s.status === status))
-      .filter((s) => (selectedBuyer === 'all' ? true : s.userId === selectedBuyer))
+      .filter((s) => (selectedBuyer === 'all' ? true : s.productBuyer === selectedBuyer))
       .filter((s) => (selectedStore === 'all' ? true : s.storeId === selectedStore))
       .filter((s) => {
         if (!q) return true;
@@ -334,6 +401,31 @@ export default function SolicitacoesPage() {
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Realtime Status Indicator */}
+              <div
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl backdrop-blur-sm border ${
+                  realtimeConnected
+                    ? 'bg-emerald-500/20 border-emerald-400/30 text-emerald-100'
+                    : 'bg-amber-500/20 border-amber-400/30 text-amber-100'
+                }`}
+              >
+                {realtimeConnected ? (
+                  <>
+                    <MdWifi className="w-4 h-4" />
+                    <span className="text-xs font-medium">Tempo Real</span>
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-300" />
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <MdWifiOff className="w-4 h-4" />
+                    <span className="text-xs font-medium">Offline</span>
+                  </>
+                )}
+              </div>
+
               <div className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
                 <MdViewList className="w-5 h-5 text-white" />
                 <span className="text-white font-bold">{filtered.length}</span>
@@ -341,7 +433,7 @@ export default function SolicitacoesPage() {
               </div>
 
               <button
-                onClick={fetchData}
+                onClick={() => { fetchData(); realtimeRefresh(); }}
                 disabled={loading}
                 className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-5 py-2.5 rounded-xl font-bold shadow-lg border border-white/30 disabled:opacity-50 transition-all duration-300 hover:scale-105"
               >

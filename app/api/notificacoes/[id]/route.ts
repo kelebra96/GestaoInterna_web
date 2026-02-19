@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { getAuthFromRequest } from '@/lib/helpers/auth';
+import { Role } from '@prisma/client';
 
 // Desabilitar cache para sempre retornar dados atualizados
 export const dynamic = 'force-dynamic';
@@ -10,16 +12,29 @@ export const revalidate = 0;
  * Busca uma notificação específica
  */
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const auth = await getAuthFromRequest(req);
+  if (!auth) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+  }
+
   const { id } = await context.params;
+  const isAdmin = auth.role === Role.super_admin || auth.role === Role.admin_rede;
+
   try {
-    const { data: notificationData, error: notificationError } = await supabaseAdmin
+    let query = supabaseAdmin
       .from('notifications')
       .select('*')
-      .eq('id', id)
-      .single();
+      .eq('id', id);
+
+    // Se não for admin, verificar se a notificação pertence ao usuário
+    if (!isAdmin) {
+      query = query.eq('user_id', auth.userId);
+    }
+
+    const { data: notificationData, error: notificationError } = await query.single();
 
     if (notificationError || !notificationData) {
       return NextResponse.json({ error: 'Notificação não encontrada' }, { status: 404 });
@@ -54,7 +69,14 @@ export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const auth = await getAuthFromRequest(req);
+  if (!auth) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+  }
+
   const { id } = await context.params;
+  const isAdmin = auth.role === Role.super_admin || auth.role === Role.admin_rede;
+
   try {
     const body = await req.json().catch(() => ({}));
     const read = body?.read;
@@ -63,12 +85,17 @@ export async function PATCH(
       return NextResponse.json({ error: 'Campo "read" é obrigatório e deve ser boolean' }, { status: 400 });
     }
 
-    // Verificar se notificação existe
-    const { data: existingNotification, error: checkError } = await supabaseAdmin
+    // Verificar se notificação existe e pertence ao usuário
+    let checkQuery = supabaseAdmin
       .from('notifications')
-      .select('id')
-      .eq('id', id)
-      .single();
+      .select('id, user_id')
+      .eq('id', id);
+
+    if (!isAdmin) {
+      checkQuery = checkQuery.eq('user_id', auth.userId);
+    }
+
+    const { data: existingNotification, error: checkError } = await checkQuery.single();
 
     if (checkError || !existingNotification) {
       return NextResponse.json({ error: 'Notificação não encontrada' }, { status: 404 });
@@ -126,17 +153,29 @@ export async function PATCH(
  * Remove uma notificação
  */
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const auth = await getAuthFromRequest(req);
+  if (!auth) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+  }
+
   const { id } = await context.params;
+  const isAdmin = auth.role === Role.super_admin || auth.role === Role.admin_rede;
+
   try {
-    // Verificar se notificação existe
-    const { data: existingNotification, error: checkError } = await supabaseAdmin
+    // Verificar se notificação existe e pertence ao usuário
+    let checkQuery = supabaseAdmin
       .from('notifications')
-      .select('id')
-      .eq('id', id)
-      .single();
+      .select('id, user_id')
+      .eq('id', id);
+
+    if (!isAdmin) {
+      checkQuery = checkQuery.eq('user_id', auth.userId);
+    }
+
+    const { data: existingNotification, error: checkError } = await checkQuery.single();
 
     if (checkError || !existingNotification) {
       return NextResponse.json({ error: 'Notificação não encontrada' }, { status: 404 });

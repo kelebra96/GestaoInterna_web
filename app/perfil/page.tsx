@@ -49,44 +49,60 @@ export default function PerfilPage() {
 
   // Fetch store and company names
   useEffect(() => {
+    if (!user || !firebaseUser) return;
+
+    const abortController = new AbortController();
+    const { signal } = abortController;
+
     const fetchStoreAndCompanyNames = async () => {
-      if (!user || !firebaseUser) return;
+      try {
+        const token = await firebaseUser.getIdToken();
+        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
-      const token = await firebaseUser.getIdToken();
-      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-
-      if (user.storeId) {
-        try {
-          const res = await fetch(`/api/lojas/${encodeURIComponent(user.storeId)}`, { headers, cache: 'no-store' });
-          if (res.ok) {
-            const data = await res.json();
-            setStoreName(data?.loja?.name || user.storeId);
-          } else {
+        if (user.storeId) {
+          try {
+            const res = await fetch(`/api/lojas/${encodeURIComponent(user.storeId)}`, { headers, cache: 'no-store', signal });
+            if (signal.aborted) return;
+            if (res.ok) {
+              const data = await res.json();
+              setStoreName(data?.loja?.name || user.storeId);
+            } else {
+              setStoreName(user.storeId);
+            }
+          } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') return;
+            console.error('Error fetching store:', error);
             setStoreName(user.storeId);
           }
-        } catch (error) {
-          console.error('Error fetching store:', error);
-          setStoreName(user.storeId);
         }
-      }
 
-      if (user.companyId) {
-        try {
-          const res = await fetch(`/api/empresas/${encodeURIComponent(user.companyId)}`, { headers, cache: 'no-store' });
-          if (res.ok) {
-            const data = await res.json();
-            setCompanyName(data?.empresa?.name || user.companyId);
-          } else {
+        if (user.companyId) {
+          try {
+            const res = await fetch(`/api/empresas/${encodeURIComponent(user.companyId)}`, { headers, cache: 'no-store', signal });
+            if (signal.aborted) return;
+            if (res.ok) {
+              const data = await res.json();
+              setCompanyName(data?.empresa?.name || user.companyId);
+            } else {
+              setCompanyName(user.companyId);
+            }
+          } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') return;
+            console.error('Error fetching company:', error);
             setCompanyName(user.companyId);
           }
-        } catch (error) {
-          console.error('Error fetching company:', error);
-          setCompanyName(user.companyId);
         }
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return;
+        console.error('Error in fetchStoreAndCompanyNames:', error);
       }
     };
 
     fetchStoreAndCompanyNames();
+
+    return () => {
+      abortController.abort();
+    };
   }, [user, firebaseUser]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {

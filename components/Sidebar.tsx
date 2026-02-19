@@ -98,31 +98,50 @@ export default function Sidebar({
 
   // Fetch badges
   useEffect(() => {
-    let cancelled = false;
+    if (!firebaseUser) return;
+
+    const abortController = new AbortController();
+    const { signal } = abortController;
+
     const fetchBadges = async () => {
       try {
+        const token = await firebaseUser.getIdToken();
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        };
+
         const [dashRes, notifRes] = await Promise.all([
-          fetch('/api/dashboard', { cache: 'no-store' }),
-          fetch('/api/notificacoes?count=true', { cache: 'no-store' })
+          fetch('/api/dashboard', { cache: 'no-store', headers, signal }),
+          fetch('/api/notificacoes?count=true', { cache: 'no-store', headers, signal })
         ]);
+
+        if (signal.aborted) return;
 
         if (dashRes.ok) {
           const data = await dashRes.json();
           const pending = data?.solicitacoesPorStatus?.pending;
-          if (!cancelled) setSolBadge(pending > 0 ? pending : undefined);
+          setSolBadge(pending > 0 ? pending : undefined);
         }
 
         if (notifRes.ok) {
           const data = await notifRes.json();
-          if (!cancelled) setNotifBadge(data.count > 0 ? data.count : undefined);
+          setNotifBadge(data.count > 0 ? data.count : undefined);
         }
-      } catch { /* ignore */ }
+      } catch (err) {
+        // Ignorar erros de abort
+        if (err instanceof Error && err.name === 'AbortError') return;
+      }
     };
 
     fetchBadges();
     const interval = setInterval(fetchBadges, 30000);
-    return () => { cancelled = true; clearInterval(interval); };
-  }, []);
+
+    return () => {
+      abortController.abort();
+      clearInterval(interval);
+    };
+  }, [firebaseUser]);
 
   // Filter menu items by role
   const filteredItems = menuItems.filter(item => {

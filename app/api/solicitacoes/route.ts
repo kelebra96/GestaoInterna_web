@@ -22,6 +22,8 @@ type SolicitacaoDTO = {
   companyName?: string;
   items?: number;
   total?: number;
+  // Comprador do produto (campo comprador dos itens)
+  productBuyer?: string;
 };
 
 const getUserName = async (userId?: string): Promise<string> => {
@@ -138,6 +140,7 @@ export async function GET(request: Request) {
       let items: number | undefined;
       let total: number | undefined;
       let shouldUpdateStatus = false;
+      let productBuyer: string | undefined;
 
       let itensData: any[] | null = null;
       try {
@@ -150,6 +153,12 @@ export async function GET(request: Request) {
         if (!itensError && itensDataResult) {
           itensData = itensDataResult;
           items = itensDataResult.length;
+
+          // Extrair comprador do primeiro item que tiver
+          const itemWithBuyer = itensDataResult.find((item: any) => item.comprador?.trim());
+          if (itemWithBuyer) {
+            productBuyer = itemWithBuyer.comprador.trim();
+          }
 
           // Verificar se todos os itens foram processados
           if (items && items > 0) {
@@ -251,11 +260,41 @@ export async function GET(request: Request) {
         companyName,
         items,
         total,
+        productBuyer,
       });
     }
 
-    console.log(`✅ [GET /api/solicitacoes] Encontradas ${solicitacoes.length} solicitações`);
-    return NextResponse.json({ solicitacoes });
+    // Extrair compradores únicos dos itens de todas as solicitações
+    const solicitacaoIds = solicitacoes.map(s => s.id);
+    const distinctBuyers: { id: string; name: string }[] = [];
+
+    if (solicitacaoIds.length > 0) {
+      const { data: allItens } = await supabaseAdmin
+        .from('solicitacao_itens')
+        .select('comprador')
+        .in('solicitacao_id', solicitacaoIds)
+        .not('comprador', 'is', null);
+
+      if (allItens) {
+        const buyersMap = new Map<string, string>();
+        for (const item of allItens) {
+          const comprador = item.comprador?.trim();
+          if (comprador && !buyersMap.has(comprador)) {
+            buyersMap.set(comprador, comprador);
+          }
+        }
+
+        // Converter para array ordenado
+        const sortedBuyers = Array.from(buyersMap.entries())
+          .map(([id, name]) => ({ id, name }))
+          .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
+        distinctBuyers.push(...sortedBuyers);
+      }
+    }
+
+    console.log(`✅ [GET /api/solicitacoes] Encontradas ${solicitacoes.length} solicitações, ${distinctBuyers.length} compradores`);
+    return NextResponse.json({ solicitacoes, buyers: distinctBuyers });
   } catch (error: any) {
     console.error('❌ [GET /api/solicitacoes] Erro ao listar:', error);
     return NextResponse.json({

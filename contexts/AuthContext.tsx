@@ -173,8 +173,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      await supabaseSignIn(email, password);
-      router.push('/');
+      const result = await supabaseSignIn(email, password);
+      // Aguarda o perfil ser carregado antes de resolver
+      if (result?.session?.access_token) {
+        await fetchUserProfile(result.session.access_token);
+      }
+      // NÃO faz router.push aqui - deixa a página de login controlar a navegação
     } catch (error: any) {
       console.error('Erro ao fazer login:', error);
       throw error;

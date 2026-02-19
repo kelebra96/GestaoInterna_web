@@ -319,9 +319,8 @@ class WebhookService {
           ...webhook.headers,
         },
         body: payload,
-      }, {
         maxRetries: 0, // Retry será controlado pelo sistema de webhooks
-        timeout: 30000,
+        timeoutMs: 30000,
       });
 
       const durationMs = Date.now() - startTime;

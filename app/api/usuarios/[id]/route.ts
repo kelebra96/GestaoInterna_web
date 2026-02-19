@@ -52,12 +52,12 @@ export async function GET(
   const { id } = await params;
   const auth = await getAuthFromRequest(req);
   if (!auth) {
-    return NextResponse.json({ error: 'NÆo autorizado' }, { status: 401 });
+    return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 });
   }
 
   const row = await fetchUserRow(id);
   if (!row) {
-    return NextResponse.json({ error: 'Usu rio nÆo encontrado' }, { status: 404 });
+    return NextResponse.json({ error: 'Usuario nao encontrado' }, { status: 404 });
   }
 
   const isSelf = auth.userId === id;
@@ -78,7 +78,7 @@ export async function PATCH(
   const { id } = await params;
   const requester = await getAuthFromRequest(req);
   if (!requester || !allowedAdminRoles.has(requester.role)) {
-    return NextResponse.json({ error: 'NÆo autorizado' }, { status: 401 });
+    return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 });
   }
 
   const body = await req.json().catch(() => ({}));
@@ -88,7 +88,7 @@ export async function PATCH(
   if (typeof body.role === 'string') update.role = body.role;
   if (typeof body.companyId === 'string' || body.companyId === null) update.company_id = body.companyId;
 
-  // Processar storeIds primeiro para validação
+  // Processar storeIds primeiro para validacao
   let storeIdsToValidate: string[] = [];
   if (Array.isArray(body.storeIds)) {
     storeIdsToValidate = body.storeIds.filter((s: any) => typeof s === 'string' && s.length > 0);
@@ -115,14 +115,14 @@ export async function PATCH(
     const invalidIds = storeIdsToValidate.filter(id => !existingIds.has(id));
 
     if (invalidIds.length > 0) {
-      console.warn('IDs de lojas inválidos:', invalidIds);
+      console.warn('IDs de lojas invalidos:', invalidIds);
       return NextResponse.json({
-        error: `Loja(s) não encontrada(s): ${invalidIds.join(', ')}`
+        error: `Loja(s) nao encontrada(s): ${invalidIds.join(', ')}`
       }, { status: 400 });
     }
   }
 
-  // Definir store_id e store_ids após validação
+  // Definir store_id e store_ids apos validacao
   if (Array.isArray(body.storeIds)) {
     const filtered = body.storeIds.filter((s: any) => typeof s === 'string' && s.length > 0);
     update.store_ids = filtered;
@@ -134,25 +134,42 @@ export async function PATCH(
   }
 
   if (Object.keys(update).length === 0) {
-    return NextResponse.json({ error: 'Nenhum campo v lido para atualizar' }, { status: 400 });
+    return NextResponse.json({ error: 'Nenhum campo valido para atualizar' }, { status: 400 });
   }
 
   try {
     const current = await fetchUserRow(id);
     if (!current) {
-      return NextResponse.json({ error: 'Usu rio nÆo encontrado' }, { status: 404 });
+      return NextResponse.json({ error: 'Usuario nao encontrado' }, { status: 404 });
+    }
+
+    // PROTECAO: Apenas desenvolvedores podem atribuir o role 'developer'
+    // Isso impede que admins se auto-promovam a desenvolvedor
+    if (Object.prototype.hasOwnProperty.call(update, 'role') && update.role === 'developer') {
+      // Verifica se o usuario atual na tabela users tem role 'developer'
+      const { data: requesterData } = await supabaseAdmin
+        .from('users')
+        .select('role')
+        .eq('id', requester.userId)
+        .single();
+
+      if (!requesterData || requesterData.role !== 'developer') {
+        return NextResponse.json({
+          error: 'Apenas desenvolvedores podem atribuir o perfil de Desenvolvedor'
+        }, { status: 403 });
+      }
     }
 
     if (requester.role !== 'super_admin') {
       const currentCompany = current.company_id || null;
       if (currentCompany && requester.orgId && currentCompany !== requester.orgId) {
-        return NextResponse.json({ error: 'Acesso negado a este usu rio' }, { status: 403 });
+        return NextResponse.json({ error: 'Acesso negado a este usuario' }, { status: 403 });
       }
       if (Object.prototype.hasOwnProperty.call(update, 'company_id') && update.company_id && requester.orgId && update.company_id !== requester.orgId) {
-        return NextResponse.json({ error: 'NÆo ‚ permitido alterar empresa para fora do seu escopo' }, { status: 403 });
+        return NextResponse.json({ error: 'Nao e permitido alterar empresa para fora do seu escopo' }, { status: 403 });
       }
-      if (Object.prototype.hasOwnProperty.call(update, 'role') && (update.role === 'developer' || update.role === 'admin')) {
-        return NextResponse.json({ error: 'Perfil nÆo permitido' }, { status: 403 });
+      if (Object.prototype.hasOwnProperty.call(update, 'role') && update.role === 'admin') {
+        return NextResponse.json({ error: 'Perfil nao permitido' }, { status: 403 });
       }
     }
 
@@ -166,7 +183,7 @@ export async function PATCH(
       .single();
 
     if (error || !data) {
-      throw error || new Error('Falha ao atualizar usu rio');
+      throw error || new Error('Falha ao atualizar usuario');
     }
 
     if (Object.prototype.hasOwnProperty.call(update, 'role')) {
@@ -177,7 +194,7 @@ export async function PATCH(
 
     return NextResponse.json({ usuario: mapUser(data as DbUser) });
   } catch (error) {
-    console.error('Erro ao atualizar usu rio:', error);
-    return NextResponse.json({ error: 'Falha ao atualizar usu rio' }, { status: 500 });
+    console.error('Erro ao atualizar usuario:', error);
+    return NextResponse.json({ error: 'Falha ao atualizar usuario' }, { status: 500 });
   }
 }
